@@ -3,27 +3,25 @@
  Left click toggles the panel; right click exposes the sole Quit command.
  The panel floats above ordinary windows and follows the user across Spaces.
  Closing hides and resets the ephemeral session rather than destroying state UI.
- Panel size derives directly from SessionModel.State through PanelLayout.
+ Each state gets a parsimonious default size; transcript windows stay resizable.
 */
 import AppKit
 import Combine
 import SwiftUI
 
 enum PanelLayout {
-    static let width: CGFloat = 420
-
-    static func height(for state: SessionModel.State) -> CGFloat {
+    static func size(for state: SessionModel.State) -> NSSize {
         switch state {
         case .idle:
-            130
+            NSSize(width: 420, height: 130)
         case .recording:
-            210
+            NSSize(width: 260, height: 74)
         case .transcribing:
-            220
+            NSSize(width: 260, height: 110)
         case .complete:
-            340
+            NSSize(width: 420, height: 340)
         case .error:
-            210
+            NSSize(width: 420, height: 210)
         }
     }
 }
@@ -42,9 +40,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel = NSPanel(
             contentRect: NSRect(
                 origin: .zero,
-                size: NSSize(width: PanelLayout.width, height: PanelLayout.height(for: model.state))
+                size: PanelLayout.size(for: model.state)
             ),
-            styleMask: [.titled, .closable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -86,8 +84,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private func observeState() {
         stateObservation = model.$state.sink { [weak self] state in
             guard let self else { return }
-            let size = NSSize(width: PanelLayout.width, height: PanelLayout.height(for: state))
-            self.panel.setContentSize(size)
+            self.panel.setContentSize(PanelLayout.size(for: state))
         }
         preparationObservation = model.$preparationState.sink { [weak self] state in
             self?.updateStatusIcon(for: state)

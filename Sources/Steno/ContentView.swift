@@ -42,25 +42,21 @@ struct ContentView: View {
 
             case .recording:
                 TimelineView(.periodic(from: .now, by: 0.1)) { _ in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 7) {
                         Circle()
                             .fill(.red)
-                            .frame(width: 8, height: 8)
+                            .frame(width: 7, height: 7)
                         Text("Recording")
                             .foregroundStyle(.red)
-                        ProgressView(value: Double(model.recordingLevel))
-                            .progressViewStyle(.linear)
-                            .tint(.red)
+                        MicrophoneLevelBars(level: model.recordingLevel)
+                        Spacer(minLength: 8)
+                        Button("Stop") {
+                            Task { await model.stop() }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
                     }
                 }
-                Text("Transcript appears after Stop.")
-                    .foregroundStyle(.secondary)
-                SelectableTranscriptView(text: "")
-                Button("Stop") {
-                    Task { await model.stop() }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
 
             case .transcribing:
                 HStack(spacing: 10) {
@@ -68,17 +64,20 @@ struct ContentView: View {
                         .controlSize(.small)
                     Text("Transcribing")
                 }
-                SelectableTranscriptView(text: "")
                 Button("Reset", action: model.reset)
 
             case let .complete(text):
                 SelectableTranscriptView(text: text)
                 HStack {
                     if model.canCopy {
-                        Button(model.didCopy ? "Copied" : "Copy") {
+                        Button {
                             model.copy()
+                        } label: {
+                            Image(systemName: model.didCopy ? "checkmark" : "doc.on.doc")
                         }
                         .buttonStyle(.borderedProminent)
+                        .accessibilityLabel(model.didCopy ? "Transcript copied" : "Copy transcript")
+                        .help("Copy transcript")
                     }
                     Button("Reset", action: model.reset)
                 }
@@ -98,5 +97,27 @@ struct ContentView: View {
         .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+}
+
+private struct MicrophoneLevelBars: View {
+    let level: Float
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 2) {
+            ForEach(0..<5) { index in
+                Capsule()
+                    .fill(isActive(index) ? Color.red : Color.secondary.opacity(0.18))
+                    .frame(width: 3, height: CGFloat(4 + index * 2))
+            }
+        }
+        .frame(width: 23, height: 12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Microphone level")
+        .accessibilityValue(Int(level * 100).description)
+    }
+
+    private func isActive(_ index: Int) -> Bool {
+        level >= Float(index + 1) / 5
     }
 }

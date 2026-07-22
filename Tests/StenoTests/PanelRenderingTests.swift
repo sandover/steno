@@ -44,7 +44,7 @@ struct PanelRenderingTests {
 
         for (name, state, preparationState) in states {
             let model = previewModel(state: state, preparationState: preparationState)
-            let size = NSSize(width: PanelLayout.width, height: PanelLayout.height(for: state))
+            let size = PanelLayout.size(for: state)
             let hostingView = NSHostingView(rootView: ContentView(model: model))
             hostingView.appearance = NSAppearance(named: .aqua)
             hostingView.frame = NSRect(origin: .zero, size: size)

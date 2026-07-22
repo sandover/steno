@@ -1,5 +1,5 @@
 /*
- Proves the engine's FIFO gate covers inference, unload, and file deletion.
+ Proves the engine's FIFO gate covers inference and file deletion.
  Actor reentrancy must never permit two WhisperKit-style operations to overlap.
  A canceled waiter waits for prior teardown, skips inference, and deletes its WAV.
  These tests coordinate through an actor and use no timing-based sleeps.
@@ -15,6 +15,7 @@ struct TranscriptionEngineConcurrencyTests {
         let secondAudio = try temporaryAudio()
         let probe = EngineProbe(result: "done", waitsForRelease: true)
         let engine = testEngine(probe: probe)
+        try await engine.prepare()
 
         let first = Task { try await engine.transcribe(audioURL: firstAudio) }
         await probe.waitUntilStarted(count: 1)
@@ -31,8 +32,8 @@ struct TranscriptionEngineConcurrencyTests {
         _ = try await second.value
         #expect(await probe.maxActive == 1)
         #expect(await probe.events == [
-            "start", "finish", "unload",
-            "start", "finish", "unload",
+            "start", "finish",
+            "start", "finish",
         ])
         #expect(!FileManager.default.fileExists(atPath: firstAudio.path))
         #expect(!FileManager.default.fileExists(atPath: secondAudio.path))
@@ -43,6 +44,7 @@ struct TranscriptionEngineConcurrencyTests {
         let canceledAudio = try temporaryAudio()
         let probe = EngineProbe(result: "done", waitsForRelease: true)
         let engine = testEngine(probe: probe)
+        try await engine.prepare()
 
         let first = Task { try await engine.transcribe(audioURL: firstAudio) }
         await probe.waitUntilStarted(count: 1)
@@ -62,7 +64,7 @@ struct TranscriptionEngineConcurrencyTests {
             // Expected.
         }
         #expect(await probe.startedCount == 1)
-        #expect(await probe.unloadCount == 1)
+        #expect(await probe.unloadCount == 0)
         #expect(!FileManager.default.fileExists(atPath: canceledAudio.path))
     }
 }

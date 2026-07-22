@@ -1,6 +1,6 @@
 /*
  Proves model preparation uses pinned local assets and the engine's FIFO gate.
- Success and failure both unload model state before another operation may begin.
+ Success retains one ready model; failure unloads partial model state.
  A transcription queued during preparation cannot overlap specialization.
  Tests inject only expensive model operations; production asset preflight remains real.
 */
@@ -10,13 +10,13 @@ import Testing
 
 @Suite("TranscriptionEnginePreparationTests", .serialized)
 struct TranscriptionEnginePreparationTests {
-    @Test func successfulPreparationUsesLocalAssetsAndUnloads() async throws {
+    @Test func successfulPreparationUsesLocalAssetsAndRetainsModel() async throws {
         let probe = EnginePreparationProbe()
         let engine = preparationEngine(probe: probe)
 
         try await engine.prepare()
 
-        #expect(await probe.events == ["prepare-start", "prepare-finish", "unload"])
+        #expect(await probe.events == ["prepare-start", "prepare-finish"])
         #expect(await probe.modelRevision == "97a5bf9bbc74c7d9c12c755d04dea59e672e3808")
     }
 
@@ -35,7 +35,7 @@ struct TranscriptionEnginePreparationTests {
         #expect(await probe.events == ["prepare-start", "prepare-finish", "unload"])
     }
 
-    @Test func transcriptionWaitsForPreparationAndUnload() async throws {
+    @Test func transcriptionWaitsForPreparationAndReusesPreparedModel() async throws {
         let audio = try temporaryAudio()
         let probe = EnginePreparationProbe(waitsForPreparationRelease: true)
         let engine = preparationEngine(probe: probe)
@@ -53,8 +53,8 @@ struct TranscriptionEnginePreparationTests {
         #expect(text == "prepared transcript")
         #expect(await probe.maxActive == 1)
         #expect(await probe.events == [
-            "prepare-start", "prepare-finish", "unload",
-            "transcribe-start", "transcribe-finish", "unload",
+            "prepare-start", "prepare-finish",
+            "transcribe-start", "transcribe-finish",
         ])
         #expect(!FileManager.default.fileExists(atPath: audio.path))
     }

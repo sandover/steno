@@ -61,10 +61,11 @@ struct RecorderTests {
         }
     }
 
-    @Test func decibelPowerMapsToAUsefulNormalizedMeterRange() {
+    @Test func decibelPowerIgnoresRoomNoiseAndMapsSpeechRange() {
         #expect(normalizedMicrophoneLevel(decibels: -160) == 0)
-        #expect(normalizedMicrophoneLevel(decibels: -60) == 0)
-        #expect(normalizedMicrophoneLevel(decibels: -30) == 0.5)
+        #expect(normalizedMicrophoneLevel(decibels: -40) == 0)
+        #expect(normalizedMicrophoneLevel(decibels: -25) == 0.5)
+        #expect(normalizedMicrophoneLevel(decibels: -10) == 1)
         #expect(normalizedMicrophoneLevel(decibels: 0) == 1)
         #expect(normalizedMicrophoneLevel(decibels: 4) == 1)
     }

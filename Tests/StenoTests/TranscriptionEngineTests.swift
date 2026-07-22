@@ -1,5 +1,5 @@
 /*
- Proves one engine run returns text only after inference and complete teardown.
+ Proves one engine run returns text only after inference and WAV teardown.
  Tests inject only the expensive inference boundary; asset preflight remains real.
  Success, cancellation, local preflight failure, and inference failure delete WAVs.
  The configuration test locks WhisperKit to explicit local, non-downloading paths.
@@ -10,22 +10,24 @@ import Testing
 
 @Suite("TranscriptionEngineTests", .serialized)
 struct TranscriptionEngineTests {
-    @Test func successfulRunReturnsTextUnloadsAndDeletesWave() async throws {
+    @Test func successfulRunReturnsTextAndDeletesWaveWithoutUnloading() async throws {
         let audio = try temporaryAudio()
         let probe = EngineProbe(result: "  useful transcript  ")
         let engine = testEngine(probe: probe)
+        try await engine.prepare()
 
         let text = try await engine.transcribe(audioURL: audio)
 
         #expect(text == "useful transcript")
-        #expect(await probe.events == ["start", "finish", "unload"])
+        #expect(await probe.events == ["start", "finish"])
         #expect(!FileManager.default.fileExists(atPath: audio.path))
     }
 
-    @Test func inferenceFailureUnloadsAndDeletesWave() async throws {
+    @Test func inferenceFailureKeepsPreparedModelAndDeletesWave() async throws {
         let audio = try temporaryAudio()
         let probe = EngineProbe(error: TestInferenceError.failed)
         let engine = testEngine(probe: probe)
+        try await engine.prepare()
 
         do {
             _ = try await engine.transcribe(audioURL: audio)
@@ -34,7 +36,7 @@ struct TranscriptionEngineTests {
             #expect(error == .failed)
         }
 
-        #expect(await probe.events == ["start", "finish", "unload"])
+        #expect(await probe.events == ["start", "finish"])
         #expect(!FileManager.default.fileExists(atPath: audio.path))
     }
 
@@ -42,6 +44,7 @@ struct TranscriptionEngineTests {
         let audio = try temporaryAudio()
         let probe = EngineProbe(result: "late text", waitsForRelease: true)
         let engine = testEngine(probe: probe)
+        try await engine.prepare()
         let task = Task { try await engine.transcribe(audioURL: audio) }
         await probe.waitUntilStarted(count: 1)
 
@@ -54,7 +57,7 @@ struct TranscriptionEngineTests {
         } catch is CancellationError {
             // Expected.
         }
-        #expect(await probe.events == ["start", "finish", "unload"])
+        #expect(await probe.events == ["start", "finish"])
         #expect(!FileManager.default.fileExists(atPath: audio.path))
     }
 

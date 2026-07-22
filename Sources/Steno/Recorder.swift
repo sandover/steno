@@ -50,7 +50,7 @@ protocol AudioRecordingBackend: AnyObject {
 }
 
 func normalizedMicrophoneLevel(decibels: Float) -> Float {
-    min(max((decibels + 60) / 60, 0), 1)
+    min(max((decibels + 40) / 30, 0), 1)
 }
 
 @MainActor

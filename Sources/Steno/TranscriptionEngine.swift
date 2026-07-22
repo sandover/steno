@@ -1,8 +1,8 @@
 /*
- Serializes every WhisperKit inference run and owns model and WAV teardown.
+ Prepares and retains one WhisperKit model, then serializes every inference run.
  TranscriptionEngine accepts one narrow closure seam for deterministic tests.
- Production always uses the single pinned local model after asset preflight.
- A canceled caller cannot return text; teardown finishes before the next run.
+ Production loads the pinned local model at launch and reuses it until app exit.
+ A canceled caller cannot return text; WAV teardown finishes before the next run.
  Actor reentrancy is controlled by an explicit FIFO gate around the whole run.
 */
 import Foundation
@@ -18,6 +18,14 @@ struct TranscriptionDecodingSettings: Codable, Equatable, Sendable {
     let chunkingStrategy: String
 }
 
+enum TranscriptionEngineError: LocalizedError {
+    case notPrepared
+
+    var errorDescription: String? {
+        "Steno's speech model is not ready."
+    }
+}
+
 actor TranscriptionEngine {
     typealias Preparation = @Sendable (AssetLocations) async throws -> Void
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
@@ -28,6 +36,7 @@ actor TranscriptionEngine {
     private let injectedInference: Inference?
     private let injectedUnload: Unload?
     private var whisperKit: WhisperKit?
+    private var prepared = false
     private var active = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
@@ -52,6 +61,10 @@ actor TranscriptionEngine {
 
     func prepare() async throws {
         await acquire()
+        guard !prepared else {
+            release()
+            return
+        }
         var preparationStarted = false
 
         do {
@@ -65,12 +78,13 @@ actor TranscriptionEngine {
             } else {
                 let kit = try await makeWhisperKit(for: assets)
                 whisperKit = kit
-                try await kit.prewarmModels()
+                try await kit.loadModels()
             }
             try Task.checkCancellation()
-            await unload(operationStarted: preparationStarted)
+            prepared = true
             release()
         } catch {
+            prepared = false
             await unload(operationStarted: preparationStarted)
             release()
             throw error
@@ -85,17 +99,15 @@ actor TranscriptionEngine {
             try Task.checkCancellation()
             let assets = try await AssetPreflight.check(resourceRoot: resourceRoot)
             try Task.checkCancellation()
+            guard prepared else { throw TranscriptionEngineError.notPrepared }
 
             let text: String
             if let injectedInference {
                 inferenceStarted = true
                 text = try await injectedInference(audioURL, assets)
             } else {
-                let kit = try await makeWhisperKit(for: assets)
-                whisperKit = kit
+                guard let kit = whisperKit else { throw TranscriptionEngineError.notPrepared }
                 inferenceStarted = true
-                try await kit.loadModels()
-                try Task.checkCancellation()
                 let results = try await kit.transcribe(
                     audioPath: audioURL.path,
                     decodeOptions: Self.decodingOptions
@@ -134,7 +146,9 @@ actor TranscriptionEngine {
     }
 
     private func teardown(audioURL: URL, inferenceStarted: Bool) async {
-        await unload(operationStarted: inferenceStarted)
+        if inferenceStarted, injectedInference == nil {
+            whisperKit?.clearState()
+        }
         try? FileManager.default.removeItem(at: audioURL)
     }
 
@@ -148,6 +162,7 @@ actor TranscriptionEngine {
             }
         }
         whisperKit = nil
+        prepared = false
     }
 
     private func acquire() async {
