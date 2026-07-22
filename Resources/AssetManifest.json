@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "model": {
+    "repository": "argmaxinc/whisperkit-coreml",
+    "revision": "97a5bf9bbc74c7d9c12c755d04dea59e672e3808",
+    "directory": "Models/openai_whisper-large-v3-v20240930_turbo_632MB"
+  },
+  "tokenizer": {
+    "repository": "openai/whisper-large-v3",
+    "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "directory": "Tokenizers/openai-whisper-large-v3"
+  }
+}

@@ -7,6 +7,56 @@
  No Xcode project or generated build description is authoritative.
 */
 import PackageDescription
+import Foundation
+
+let assetRoot = URL(fileURLWithPath: #filePath)
+    .deletingLastPathComponent()
+    .appendingPathComponent("Resources", isDirectory: true)
+
+func requireMaterializedAssets() {
+    let requiredPaths = [
+        "AssetManifest.json",
+        "Models/openai_whisper-large-v3-v20240930_turbo_632MB/AudioEncoder.mlmodelc",
+        "Models/openai_whisper-large-v3-v20240930_turbo_632MB/MelSpectrogram.mlmodelc",
+        "Models/openai_whisper-large-v3-v20240930_turbo_632MB/TextDecoder.mlmodelc",
+        "Tokenizers/openai-whisper-large-v3/tokenizer.json",
+        "Tokenizers/openai-whisper-large-v3/tokenizer_config.json",
+        "Tokenizers/openai-whisper-large-v3/config.json",
+    ]
+    let manager = FileManager.default
+
+    for path in requiredPaths {
+        guard manager.fileExists(atPath: assetRoot.appendingPathComponent(path).path) else {
+            fatalError("Missing required offline asset: Resources/\(path)")
+        }
+    }
+
+    guard let files = manager.enumerator(
+        at: assetRoot,
+        includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey]
+    ) else {
+        fatalError("Cannot inspect Resources for offline assets")
+    }
+
+    for case let file as URL in files {
+        guard let values = try? file.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+              values.isRegularFile == true else { continue }
+        guard let size = values.fileSize, size > 0 else {
+            fatalError("Offline asset is empty: \(file.path)")
+        }
+        guard let handle = try? FileHandle(forReadingFrom: file) else {
+            fatalError("Offline asset cannot be read: \(file.path)")
+        }
+        let prefix = try? handle.read(upToCount: 128)
+        try? handle.close()
+        if let prefix, String(decoding: prefix, as: UTF8.self)
+            .hasPrefix("version https://git-lfs.github.com/spec/v1") {
+            fatalError("Resolve Git-LFS asset before building: \(file.path)")
+        }
+    }
+}
+
+requireMaterializedAssets()
 
 let package = Package(
     name: "Steno",

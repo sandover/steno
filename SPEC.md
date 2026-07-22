@@ -95,7 +95,7 @@ Apple command-line toolchain and macOS SDK remain required.
 
 Use the WhisperKit product from the `argmax-oss-swift` Swift package, pinned to
 an exact release tag in `Package.swift`. Bundle the pinned Core ML model
-`openai_whisper-large-v3-v20240930_626MB`, which is a 4-bit compressed Large v3
+`openai_whisper-large-v3-v20240930_turbo_632MB`, which is a compressed Large v3
 Turbo variant, plus the complete `openai/whisper-large-v3` tokenizer snapshot.
 Commit large model weights through Git-LFS. A clean checkout may use the network
 to resolve SwiftPM and Git-LFS objects; the assembled app must not.
@@ -211,7 +211,7 @@ Compute word error rate with one small, pinned script in the repository that
 normalizes case and punctuation the same way for hypothesis and reference. The
 aggregate word error rate must be 10% or lower, no sample may exceed 15%, and
 ten seconds of silence must not produce five or more invented consecutive words.
-The pinned model is already a 4-bit compressed Turbo build; do not swap it for a
+The pinned model is already a compressed Turbo build; do not swap it for a
 different model unless the replacement passes this same benchmark.
 
 ### Release gate
@@ -225,7 +225,7 @@ accuracy as observed, not guaranteed.
 ## Deliberate V1 tradeoff
 
 High-quality local transcription is not a tiny workload. V1 accepts a roughly
-626 MB bundled compressed Turbo model, post-recording latency, and elevated
+632 MB bundled compressed Turbo model, post-recording latency, and elevated
 memory during transcription to get better text without cloud processing. It
 avoids live chunking, model choices, and a second recognition path. If the
 accuracy gate fails, stop and reconsider the model; do not hide the failure with

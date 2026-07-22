@@ -33,7 +33,8 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Reset.
   `.xcodeproj`, `.xcworkspace`, Xcode-only build step, or second build path.
 - Use one small script to assemble and ad-hoc-sign the local `.app` bundle from
   `swift build`; do not introduce a project generator or packaging framework.
-- Bundle the pinned Core ML model `openai_whisper-large-v3-v20240930_626MB` and
+- Bundle the pinned compressed Large v3 Turbo Core ML model
+  `openai_whisper-large-v3-v20240930_turbo_632MB` and
   the matching `openai/whisper-large-v3` tokenizer. The installed app runs
   inside App Sandbox. It must not have a network-client entitlement, download
   models at runtime, or fall back to remote recognition.
