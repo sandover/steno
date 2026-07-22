@@ -13,20 +13,25 @@ import Testing
 @MainActor
 struct PanelRenderingTests {
     @Test func rendersEveryState() throws {
-        let states: [(String, SessionModel.State)] = [
-            ("idle", .idle),
-            ("recording", .recording),
-            ("transcribing", .transcribing),
-            ("complete", .complete("A selectable meeting transcript appears here.")),
-            ("empty", .complete("")),
+        let states: [(String, SessionModel.State, SessionModel.PreparationState)] = [
+            ("preparing", .idle, .preparing),
+            ("preparation-error", .idle, .failed(.init(
+                message: "Steno could not prepare its local speech model.",
+                showsMicrophoneSettings: false
+            ))),
+            ("idle", .idle, .ready),
+            ("recording", .recording, .ready),
+            ("transcribing", .transcribing, .ready),
+            ("complete", .complete("A selectable meeting transcript appears here."), .ready),
+            ("empty", .complete(""), .ready),
             ("permission-error", .error(.init(
                 message: "Microphone access is denied.",
                 showsMicrophoneSettings: true
-            ))),
+            )), .ready),
             ("error", .error(.init(
                 message: "Steno could not transcribe this recording.",
                 showsMicrophoneSettings: false
-            ))),
+            )), .ready),
         ]
         let renderDirectory = ProcessInfo.processInfo.environment["STENO_UI_RENDER_DIR"]
             .map { URL(fileURLWithPath: $0, isDirectory: true) }
@@ -37,8 +42,8 @@ struct PanelRenderingTests {
             )
         }
 
-        for (name, state) in states {
-            let model = previewModel(state: state)
+        for (name, state, preparationState) in states {
+            let model = previewModel(state: state, preparationState: preparationState)
             let size = NSSize(width: PanelLayout.width, height: PanelLayout.height(for: state))
             let hostingView = NSHostingView(rootView: ContentView(model: model))
             hostingView.appearance = NSAppearance(named: .aqua)
@@ -54,9 +59,13 @@ struct PanelRenderingTests {
         }
     }
 
-    private func previewModel(state: SessionModel.State) -> SessionModel {
+    private func previewModel(
+        state: SessionModel.State,
+        preparationState: SessionModel.PreparationState
+    ) -> SessionModel {
         SessionModel(
             initialState: state,
+            initialPreparationState: preparationState,
             startRecording: { URL(fileURLWithPath: "/tmp/preview.wav") },
             stopRecording: { URL(fileURLWithPath: "/tmp/preview.wav") },
             resetRecording: {},

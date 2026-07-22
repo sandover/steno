@@ -21,6 +21,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = SessionModel(recorder: recorder, engine: engine)
         self.model = model
         panelController = PanelController(model: model)
+        Task { await model.prepare() }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {

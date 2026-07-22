@@ -19,10 +19,12 @@ struct TranscriptionDecodingSettings: Codable, Equatable, Sendable {
 }
 
 actor TranscriptionEngine {
+    typealias Preparation = @Sendable (AssetLocations) async throws -> Void
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
     typealias Unload = @Sendable () async -> Void
 
     private let resourceRoot: URL
+    private let injectedPreparation: Preparation?
     private let injectedInference: Inference?
     private let injectedUnload: Unload?
     private var whisperKit: WhisperKit?
@@ -31,18 +33,48 @@ actor TranscriptionEngine {
 
     init(resourceRoot: URL) {
         self.resourceRoot = resourceRoot
+        injectedPreparation = nil
         injectedInference = nil
         injectedUnload = nil
     }
 
     init(
         resourceRoot: URL,
+        preparation: @escaping Preparation = { _ in },
         inference: @escaping Inference,
         unload: @escaping Unload = {}
     ) {
         self.resourceRoot = resourceRoot
+        injectedPreparation = preparation
         injectedInference = inference
         injectedUnload = unload
+    }
+
+    func prepare() async throws {
+        await acquire()
+        var preparationStarted = false
+
+        do {
+            try Task.checkCancellation()
+            let assets = try await AssetPreflight.check(resourceRoot: resourceRoot)
+            try Task.checkCancellation()
+
+            preparationStarted = true
+            if let injectedPreparation {
+                try await injectedPreparation(assets)
+            } else {
+                let kit = try await makeWhisperKit(for: assets)
+                whisperKit = kit
+                try await kit.prewarmModels()
+            }
+            try Task.checkCancellation()
+            await unload(operationStarted: preparationStarted)
+            release()
+        } catch {
+            await unload(operationStarted: preparationStarted)
+            release()
+            throw error
+        }
     }
 
     func transcribe(audioURL: URL) async throws -> String {
@@ -102,7 +134,12 @@ actor TranscriptionEngine {
     }
 
     private func teardown(audioURL: URL, inferenceStarted: Bool) async {
-        if inferenceStarted {
+        await unload(operationStarted: inferenceStarted)
+        try? FileManager.default.removeItem(at: audioURL)
+    }
+
+    private func unload(operationStarted: Bool) async {
+        if operationStarted {
             if let injectedUnload {
                 await injectedUnload()
             } else if let whisperKit {
@@ -111,7 +148,6 @@ actor TranscriptionEngine {
             }
         }
         whisperKit = nil
-        try? FileManager.default.removeItem(at: audioURL)
     }
 
     private func acquire() async {

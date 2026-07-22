@@ -1,7 +1,8 @@
 /*
  Owns Steno's five visible states and the complete Record, Stop, Copy, Reset loop.
  SessionModel is the sole source of visible transcript and session generation.
- Recorder and engine behavior enter through five direct closures for headless tests.
+ Recorder and engine behavior enter through direct closures for headless tests.
+ Orthogonal model readiness keeps Record unavailable during launch preparation.
  Reset invalidates the generation before canceling work, so late text is ignored.
  Clipboard text is the only output and is available only for nonempty completion.
 */
@@ -23,6 +24,13 @@ final class SessionModel: ObservableObject {
         case error(Failure)
     }
 
+    enum PreparationState: Equatable {
+        case preparing
+        case ready
+        case failed(Failure)
+    }
+
+    typealias PrepareEngine = @Sendable () async throws -> Void
     typealias StartRecording = @MainActor () async throws -> URL
     typealias StopRecording = @MainActor () throws -> URL
     typealias ResetRecording = @MainActor () throws -> Void
@@ -30,6 +38,7 @@ final class SessionModel: ObservableObject {
     typealias WriteClipboard = @MainActor (String) -> Void
 
     @Published private(set) var state: State = .idle
+    @Published private(set) var preparationState: PreparationState
     @Published private(set) var didCopy = false
 
     var transcript: String {
@@ -41,12 +50,18 @@ final class SessionModel: ObservableObject {
         !transcript.isEmpty
     }
 
+    var canRecord: Bool {
+        state == .idle && preparationState == .ready
+    }
+
+    private let prepareEngine: PrepareEngine
     private let startRecording: StartRecording
     private let stopRecording: StopRecording
     private let resetRecording: ResetRecording
     private let transcribe: Transcribe
     private let writeClipboard: WriteClipboard
     private var generation = 0
+    private var isPreparing = false
     private var transcriptionTask: Task<String, Error>?
 
     init(
@@ -54,6 +69,7 @@ final class SessionModel: ObservableObject {
         engine: TranscriptionEngine,
         pasteboard: NSPasteboard = .general
     ) {
+        prepareEngine = { try await engine.prepare() }
         startRecording = { try await recorder.start() }
         stopRecording = { try recorder.stop() }
         resetRecording = { try recorder.reset() }
@@ -62,6 +78,7 @@ final class SessionModel: ObservableObject {
             pasteboard.clearContents()
             pasteboard.setString(text, forType: .string)
         }
+        preparationState = .preparing
         recorder.onFailure = { [weak self] failure in
             self?.recordingFailed(failure)
         }
@@ -69,22 +86,39 @@ final class SessionModel: ObservableObject {
 
     init(
         initialState: State = .idle,
+        initialPreparationState: PreparationState = .ready,
+        prepareEngine: @escaping PrepareEngine = {},
         startRecording: @escaping StartRecording,
         stopRecording: @escaping StopRecording,
         resetRecording: @escaping ResetRecording,
         transcribe: @escaping Transcribe,
         writeClipboard: @escaping WriteClipboard
     ) {
+        self.prepareEngine = prepareEngine
         self.startRecording = startRecording
         self.stopRecording = stopRecording
         self.resetRecording = resetRecording
         self.transcribe = transcribe
         self.writeClipboard = writeClipboard
         state = initialState
+        preparationState = initialPreparationState
+    }
+
+    func prepare() async {
+        guard preparationState != .ready, !isPreparing else { return }
+        isPreparing = true
+        preparationState = .preparing
+        do {
+            try await prepareEngine()
+            preparationState = .ready
+        } catch {
+            preparationState = .failed(Self.failure(for: error))
+        }
+        isPreparing = false
     }
 
     func record() async {
-        guard state == .idle else { return }
+        guard canRecord else { return }
         generation += 1
         let recordingGeneration = generation
         state = .recording

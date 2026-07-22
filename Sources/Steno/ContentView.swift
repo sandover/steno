@@ -14,12 +14,31 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 14) {
             switch model.state {
             case .idle:
-                Button("Record") {
-                    Task { await model.record() }
+                switch model.preparationState {
+                case .preparing:
+                    HStack(spacing: 10) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Preparing speech model…")
+                    }
+                    Text("First launch can take several minutes. Record will appear when ready.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                case .ready:
+                    Button("Record") {
+                        Task { await model.record() }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                case let .failed(failure):
+                    Text(failure.message)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Retry") {
+                        Task { await model.prepare() }
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
 
             case .recording:
                 Text("Transcript appears after Stop.")

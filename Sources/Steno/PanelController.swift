@@ -15,7 +15,7 @@ enum PanelLayout {
     static func height(for state: SessionModel.State) -> CGFloat {
         switch state {
         case .idle:
-            96
+            130
         case .recording:
             180
         case .transcribing:
@@ -35,6 +35,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let statusItem: NSStatusItem
     private let quitMenu = NSMenu()
     private var stateObservation: AnyCancellable?
+    private var preparationObservation: AnyCancellable?
 
     init(model: SessionModel) {
         self.model = model
@@ -72,8 +73,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func configureStatusItem() {
         guard let button = statusItem.button else { return }
-        button.image = NSImage(systemSymbolName: "record.circle", accessibilityDescription: "Steno")
-        button.image?.isTemplate = true
+        updateStatusIcon(for: model.preparationState)
         button.target = self
         button.action = #selector(statusItemClicked(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -89,6 +89,28 @@ final class PanelController: NSObject, NSWindowDelegate {
             let size = NSSize(width: PanelLayout.width, height: PanelLayout.height(for: state))
             self.panel.setContentSize(size)
         }
+        preparationObservation = model.$preparationState.sink { [weak self] state in
+            self?.updateStatusIcon(for: state)
+        }
+    }
+
+    private func updateStatusIcon(for state: SessionModel.PreparationState) {
+        guard let button = statusItem.button else { return }
+        let symbol: String
+        let description: String
+        switch state {
+        case .preparing:
+            symbol = "hourglass"
+            description = "Steno is preparing its speech model"
+        case .ready:
+            symbol = "record.circle"
+            description = "Steno is ready to record"
+        case .failed:
+            symbol = "exclamationmark.triangle"
+            description = "Steno could not prepare its speech model"
+        }
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        button.image?.isTemplate = true
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
