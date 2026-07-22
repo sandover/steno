@@ -101,6 +101,16 @@ enum WordErrorRate {
 }
 
 struct BenchmarkManifest: Codable, Equatable, Sendable {
+    struct Capture: Codable, Equatable, Sendable {
+        let device: String
+        let container: String
+        let sampleRateHz: Int
+        let channels: Int
+        let bitDepth: Int
+        let encoding: String
+        let consentConfirmed: Bool
+    }
+
     struct Sample: Codable, Equatable, Sendable {
         enum Kind: String, Codable, CaseIterable, Sendable {
             case quietSpeech = "quiet-speech"
@@ -122,7 +132,20 @@ struct BenchmarkManifest: Codable, Equatable, Sendable {
 
     let schemaVersion: Int
     let normalization: BenchmarkNormalization
+    let capture: Capture?
     let samples: [Sample]
+
+    init(
+        schemaVersion: Int,
+        normalization: BenchmarkNormalization,
+        capture: Capture? = nil,
+        samples: [Sample]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.normalization = normalization
+        self.capture = capture
+        self.samples = samples
+    }
 }
 
 struct ValidatedBenchmarkSample: Sendable {
@@ -206,11 +229,25 @@ enum BenchmarkHarness {
             .twoPerson,
             .moderateRoomNoise,
         ]
-        guard requiredSpeechKinds.allSatisfy({ kind in
-            manifest.samples.contains { $0.kind == kind && $0.durationSeconds >= 300 }
-        }), manifest.samples.contains(where: {
+        let hasRequiredSpeech = requiredSpeechKinds.allSatisfy { kind in
+            manifest.samples.filter {
+                $0.kind == kind && $0.durationSeconds >= 300
+            }.count == 1
+        }
+        let hasRequiredSilence = manifest.samples.filter {
             $0.kind == .silence && $0.durationSeconds >= 10
-        }) else {
+        }.count == 1
+        guard let capture = manifest.capture,
+              !capture.device.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              capture.container == "wav",
+              capture.sampleRateHz == 16_000,
+              capture.channels == 1,
+              capture.bitDepth == 16,
+              capture.encoding == "signed-little-endian-pcm",
+              capture.consentConfirmed,
+              hasRequiredSpeech,
+              hasRequiredSilence,
+              manifest.samples.count == requiredSpeechKinds.count + 1 else {
             throw BenchmarkHarnessError.invalidCorpusShape
         }
     }

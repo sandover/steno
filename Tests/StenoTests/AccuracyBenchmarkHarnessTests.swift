@@ -84,6 +84,7 @@ struct AccuracyBenchmarkHarnessTests {
         let manifest = BenchmarkManifest(
             schemaVersion: 1,
             normalization: .current,
+            capture: fixedCapture,
             samples: [
                 metadata(id: "quiet", kind: .quietSpeech, duration: 300),
                 metadata(id: "two-person", kind: .twoPerson, duration: 300),
@@ -95,6 +96,16 @@ struct AccuracyBenchmarkHarnessTests {
         try BenchmarkHarness.validateRequiredCorpus(manifest)
     }
 }
+
+private let fixedCapture = BenchmarkManifest.Capture(
+    device: "Synthetic microphone",
+    container: "wav",
+    sampleRateHz: 16_000,
+    channels: 1,
+    bitDepth: 16,
+    encoding: "signed-little-endian-pcm",
+    consentConfirmed: true
+)
 
 var benchmarkManifestURL: URL {
     URL(fileURLWithPath: #filePath)
