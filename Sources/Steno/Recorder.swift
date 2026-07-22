@@ -2,6 +2,7 @@
  Captures the current microphone to one private 16 kHz mono PCM WAV.
  Exports MicrophoneRecorder, RecordingFailure, and one narrow backend test seam.
  Permission is requested only when recording starts, never during app launch.
+ While capture is active, level exposes current microphone power from 0 through 1.
  Active capture owns its WAV; Stop transfers a valid WAV to the caller.
  Device loss and encode failure stop capture, delete audio, and report once.
 */
@@ -43,8 +44,13 @@ enum RecordingFailure: Error, Equatable, LocalizedError {
 @MainActor
 protocol AudioRecordingBackend: AnyObject {
     var onEncodingError: (() -> Void)? { get set }
+    var level: Float { get }
     func record() -> Bool
     func stop()
+}
+
+func normalizedMicrophoneLevel(decibels: Float) -> Float {
+    min(max((decibels + 60) / 60, 0), 1)
 }
 
 @MainActor
@@ -55,6 +61,10 @@ final class MicrophoneRecorder {
 
     var onFailure: ((RecordingFailure) -> Void)?
     private(set) var isRecording = false
+    var level: Float {
+        guard isRecording, let backend else { return 0 }
+        return min(max(backend.level, 0), 1)
+    }
 
     private let audioStore: TemporaryAudioStore
     private let requestPermission: PermissionRequest
@@ -225,12 +235,17 @@ final class MicrophoneRecorder {
 @MainActor
 private final class AVAudioRecordingBackend: NSObject, AudioRecordingBackend, AVAudioRecorderDelegate {
     var onEncodingError: (() -> Void)?
+    var level: Float {
+        recorder.updateMeters()
+        return normalizedMicrophoneLevel(decibels: recorder.averagePower(forChannel: 0))
+    }
     private let recorder: AVAudioRecorder
 
     init(url: URL, settings: [String: Any]) throws {
         recorder = try AVAudioRecorder(url: url, settings: settings)
         super.init()
         recorder.delegate = self
+        recorder.isMeteringEnabled = true
     }
 
     func record() -> Bool {

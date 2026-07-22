@@ -41,6 +41,18 @@ struct ContentView: View {
                 }
 
             case .recording:
+                TimelineView(.periodic(from: .now, by: 0.1)) { _ in
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(.red)
+                            .frame(width: 8, height: 8)
+                        Text("Recording")
+                            .foregroundStyle(.red)
+                        ProgressView(value: Double(model.recordingLevel))
+                            .progressViewStyle(.linear)
+                            .tint(.red)
+                    }
+                }
                 Text("Transcript appears after Stop.")
                     .foregroundStyle(.secondary)
                 SelectableTranscriptView(text: "")

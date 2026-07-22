@@ -34,6 +34,7 @@ final class SessionModel: ObservableObject {
     typealias StartRecording = @MainActor () async throws -> URL
     typealias StopRecording = @MainActor () throws -> URL
     typealias ResetRecording = @MainActor () throws -> Void
+    typealias ReadRecordingLevel = @MainActor () -> Float
     typealias Transcribe = @Sendable (URL) async throws -> String
     typealias WriteClipboard = @MainActor (String) -> Void
 
@@ -54,10 +55,15 @@ final class SessionModel: ObservableObject {
         state == .idle && preparationState == .ready
     }
 
+    var recordingLevel: Float {
+        state == .recording ? readRecordingLevel() : 0
+    }
+
     private let prepareEngine: PrepareEngine
     private let startRecording: StartRecording
     private let stopRecording: StopRecording
     private let resetRecording: ResetRecording
+    private let readRecordingLevel: ReadRecordingLevel
     private let transcribe: Transcribe
     private let writeClipboard: WriteClipboard
     private var generation = 0
@@ -73,6 +79,7 @@ final class SessionModel: ObservableObject {
         startRecording = { try await recorder.start() }
         stopRecording = { try recorder.stop() }
         resetRecording = { try recorder.reset() }
+        readRecordingLevel = { recorder.level }
         transcribe = { try await engine.transcribe(audioURL: $0) }
         writeClipboard = { text in
             pasteboard.clearContents()
@@ -91,6 +98,7 @@ final class SessionModel: ObservableObject {
         startRecording: @escaping StartRecording,
         stopRecording: @escaping StopRecording,
         resetRecording: @escaping ResetRecording,
+        readRecordingLevel: @escaping ReadRecordingLevel = { 0 },
         transcribe: @escaping Transcribe,
         writeClipboard: @escaping WriteClipboard
     ) {
@@ -98,6 +106,7 @@ final class SessionModel: ObservableObject {
         self.startRecording = startRecording
         self.stopRecording = stopRecording
         self.resetRecording = resetRecording
+        self.readRecordingLevel = readRecordingLevel
         self.transcribe = transcribe
         self.writeClipboard = writeClipboard
         state = initialState

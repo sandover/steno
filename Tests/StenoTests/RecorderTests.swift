@@ -42,6 +42,33 @@ struct RecorderTests {
         }
     }
 
+    @Test func levelReadsTheActiveBackendAndStaysNormalized() async throws {
+        try await withRecorderTest { context in
+            #expect(context.recorder.level == 0)
+            _ = try await context.recorder.start()
+
+            context.backend.level = 0.42
+            #expect(context.recorder.level == 0.42)
+
+            context.backend.level = -1
+            #expect(context.recorder.level == 0)
+
+            context.backend.level = 2
+            #expect(context.recorder.level == 1)
+
+            _ = try context.recorder.stop()
+            #expect(context.recorder.level == 0)
+        }
+    }
+
+    @Test func decibelPowerMapsToAUsefulNormalizedMeterRange() {
+        #expect(normalizedMicrophoneLevel(decibels: -160) == 0)
+        #expect(normalizedMicrophoneLevel(decibels: -60) == 0)
+        #expect(normalizedMicrophoneLevel(decibels: -30) == 0.5)
+        #expect(normalizedMicrophoneLevel(decibels: 0) == 1)
+        #expect(normalizedMicrophoneLevel(decibels: 4) == 1)
+    }
+
     @Test func resetStopsAndDeletesAnActiveRecording() async throws {
         try await withRecorderTest { context in
             let url = try await context.recorder.start()
@@ -126,6 +153,7 @@ struct RecorderTests {
 @MainActor
 private final class FakeRecordingBackend: AudioRecordingBackend {
     var onEncodingError: (() -> Void)?
+    var level: Float = 0
     let recordSucceeds: Bool
     let url: URL
     private(set) var recordCount = 0

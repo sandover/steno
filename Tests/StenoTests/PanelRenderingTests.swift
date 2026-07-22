@@ -69,6 +69,7 @@ struct PanelRenderingTests {
             startRecording: { URL(fileURLWithPath: "/tmp/preview.wav") },
             stopRecording: { URL(fileURLWithPath: "/tmp/preview.wav") },
             resetRecording: {},
+            readRecordingLevel: { 0.62 },
             transcribe: { _ in "Preview transcript" },
             writeClipboard: { _ in }
         )

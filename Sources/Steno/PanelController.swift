@@ -17,7 +17,7 @@ enum PanelLayout {
         case .idle:
             130
         case .recording:
-            180
+            210
         case .transcribing:
             220
         case .complete:
