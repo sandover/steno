@@ -8,9 +8,15 @@
 */
 import AppKit
 import Foundation
+import OSLog
 
 @MainActor
 final class SessionModel: ObservableObject {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? AppIdentity.name,
+        category: "session"
+    )
+
     struct Failure: Equatable {
         let message: String
         let showsMicrophoneSettings: Bool
@@ -160,15 +166,19 @@ final class SessionModel: ObservableObject {
         state = .transcribing
         let transcribe = self.transcribe
         let task = Task { @MainActor [weak self] in
+            Self.logger.notice("Transcription task started")
             do {
                 let text = try await transcribe(audioURL)
+                Self.logger.notice("Transcription engine returned")
                 guard let self,
                       self.generation == transcriptionGeneration,
                       self.state == .transcribing
                 else { return }
                 self.transcriptionTask = nil
                 self.state = .complete(text)
+                Self.logger.notice("Session entered complete state")
             } catch is CancellationError {
+                Self.logger.notice("Transcription task was canceled")
                 guard let self,
                       self.generation == transcriptionGeneration,
                       self.state == .transcribing
@@ -176,6 +186,7 @@ final class SessionModel: ObservableObject {
                 self.transcriptionTask = nil
                 self.state = .idle
             } catch {
+                Self.logger.error("Transcription task failed")
                 guard let self,
                       self.generation == transcriptionGeneration,
                       self.state == .transcribing

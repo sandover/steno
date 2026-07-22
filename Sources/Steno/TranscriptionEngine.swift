@@ -6,6 +6,7 @@
  Actor reentrancy is controlled by an explicit FIFO gate around the whole run.
 */
 import Foundation
+import OSLog
 import WhisperKit
 
 struct TranscriptionDecodingSettings: Codable, Equatable, Sendable {
@@ -27,6 +28,11 @@ enum TranscriptionEngineError: LocalizedError {
 }
 
 actor TranscriptionEngine {
+    private static let logger = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? AppIdentity.name,
+        category: "engine"
+    )
+
     typealias Preparation = @Sendable (AssetLocations) async throws -> Void
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
     typealias Unload = @Sendable () async -> Void
@@ -104,10 +110,13 @@ actor TranscriptionEngine {
             let text: String
             if let injectedInference {
                 inferenceStarted = true
+                Self.logger.notice("Injected inference started")
                 text = try await injectedInference(audioURL, assets)
+                Self.logger.notice("Injected inference returned")
             } else {
                 guard let kit = whisperKit else { throw TranscriptionEngineError.notPrepared }
                 inferenceStarted = true
+                Self.logger.notice("Whisper inference started")
                 let results = try await kit.transcribe(
                     audioPath: audioURL.path,
                     decodeOptions: Self.decodingOptions
@@ -116,11 +125,15 @@ actor TranscriptionEngine {
                     .map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
                     .joined(separator: " ")
+                Self.logger.notice("Whisper inference returned")
             }
 
             try Task.checkCancellation()
+            Self.logger.notice("Engine teardown started")
             await teardown(audioURL: audioURL, inferenceStarted: inferenceStarted)
+            Self.logger.notice("Engine teardown finished")
             release()
+            Self.logger.notice("Engine returning transcript")
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         } catch {
             await teardown(audioURL: audioURL, inferenceStarted: inferenceStarted)

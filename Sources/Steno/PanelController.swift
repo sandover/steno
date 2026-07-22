@@ -66,7 +66,9 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.backgroundColor = .windowBackgroundColor
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
-        panel.contentView = NSHostingView(rootView: ContentView(model: model))
+        let hostingView = NSHostingView(rootView: ContentView(model: model))
+        hostingView.sizingOptions = []
+        panel.contentView = hostingView
         panel.setContentSize(PanelLayout.size(for: model.state))
         panel.center()
     }
