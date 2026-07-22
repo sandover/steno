@@ -1,12 +1,31 @@
 /*
- Validates Steno's single pinned model and tokenizer before WhisperKit starts.
- AssetPreflight accepts an explicit resource root so tests and the app use one path.
+ Locates and validates Steno's single pinned model and tokenizer before WhisperKit.
+ InstalledResources derives the sole runtime root from sandbox Application Support.
+ AssetPreflight accepts an explicit resource root so tests and the app share checks.
  It rejects missing, empty, malformed, or unresolved Git-LFS files locally.
  Successful output contains the only model and tokenizer URLs inference may use.
  Tokenizer loading is semantic and local; this code never names a remote fallback.
 */
 import ArgmaxCore
 import Foundation
+
+enum InstalledResources {
+    static func root(in applicationSupportDirectory: URL) -> URL {
+        applicationSupportDirectory
+            .appendingPathComponent("Steno", isDirectory: true)
+            .appendingPathComponent("Resources", isDirectory: true)
+    }
+
+    static func root(fileManager: FileManager = .default) -> URL {
+        guard let applicationSupport = fileManager.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else {
+            preconditionFailure("macOS did not provide an Application Support directory")
+        }
+        return root(in: applicationSupport)
+    }
+}
 
 struct AssetManifest: Codable, Equatable, Sendable {
     struct Asset: Codable, Equatable, Sendable {
@@ -41,7 +60,7 @@ enum AssetPreflightError: LocalizedError, Equatable {
         case let .unresolvedGitLFS(path):
             "A speech asset is still a Git-LFS pointer: \(path)"
         case let .malformed(detail):
-            "The bundled speech assets are malformed: \(detail)"
+            "The installed speech assets are malformed: \(detail)"
         }
     }
 }

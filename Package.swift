@@ -3,7 +3,7 @@
  Defines Steno's only build graph: one native executable and one test target.
  The package targets Brandon's Apple Silicon Mac and pins inference exactly.
  WhisperKit is imported as a library; Steno does not ship a local server.
- Resources are declared here only when the offline model task adds them.
+ Offline assets remain repository installation inputs, not executable resources.
  No Xcode project or generated build description is authoritative.
 */
 import PackageDescription

@@ -23,8 +23,8 @@ The complete loop is:
 - Reset removes the current transcript and returns to one Record button.
 - Reset clears visible data immediately. Temporary audio remains only until its
   owning task exits; forced-termination residue is removed on the next launch.
-- The idle app is small enough to leave running and obvious enough to use on
-  impulse; substantial memory is used only while the model is transcribing.
+- The idle app is obvious enough to use on impulse. It keeps the prepared model
+  resident so Stop never pays model-loading or specialization latency.
 - The finished app is installed at
   `/Users/brandonharvey/Applications/Steno.app` and launched for immediate use.
 
@@ -33,8 +33,8 @@ The complete loop is:
 No accounts, cloud, network calls, system-audio capture, speaker labels,
 calendar integration, bots, file management, saved history, search, editing
 tools, export formats, settings screen, menu structure, transcript recovery,
-live transcription, other users, other Macs, distribution signing,
-notarization, or an installer. V1 supports one session at a time on Brandon's
+live transcription, transcript persistence, other users, other Macs, distribution signing,
+notarization, or a distributable installer/package. V1 supports one session at a time on Brandon's
 current Apple Silicon Mac and lets Whisper detect the spoken language.
 
 ## Design brief
@@ -49,10 +49,9 @@ status-bar item shows or hides the panel and offers Quit. Quitting has the same
 data-clearing effect as Reset.
 
 - **Idle:** one prominent Record button.
-- **Recording:** the panel expands to show an empty transcript field labeled
-  Transcript appears after Stop, plus one Stop button.
-- **Transcribing:** show a selectable text field, a spinner, and Transcribing.
-  Reset remains available to cancel and clear the session.
+- **Recording:** show a compact red Recording label, live microphone-level bars,
+  and one Stop button.
+- **Transcribing:** show a spinner, Transcribing, and Reset.
 - **Complete:** show the transcript with Copy and Reset buttons. When the
   result is empty, show the empty field and Reset only; do not show Copy.
 - **Error:** show one plain sentence and Reset. Link to macOS Settings only when
@@ -66,13 +65,12 @@ loop works.
 ### Interaction rules
 
 - Record never overwrites an existing transcript; Reset starts a new session.
-- Copy writes the entire transcript as plain text and briefly changes its label
-  to Copied.
+- Copy writes the entire transcript as plain text and briefly changes its icon
+  to a checkmark.
 - Reset stops capture, clears visible session data, and collapses the panel.
   During transcription it returns the UI to idle immediately, invalidates the
   session generation, and requests cancellation. The engine discards late
-  results, then deletes temporary audio and unloads the model only after the
-  in-flight task exits.
+  results and deletes temporary audio only after the in-flight task exits.
 - Closing or quitting has the same data-clearing effect as Reset.
 - An empty result is valid. Complete state shows Copy only once the transcript
   contains text.
@@ -88,20 +86,24 @@ current machine.
 
 There is no Xcode project and no Xcode GUI workflow. `swift build` compiles and
 `swift test` tests. One repository script performs the release build, assembles
-and ad-hoc-signs `Steno.app`, atomically installs it at
+and personally signs `Steno.app`, atomically installs it at
 `/Users/brandonharvey/Applications/Steno.app`, and opens it. The script copies a
-fixed `Info.plist`, entitlements, bundled model, and tokenizer. The installed
+fixed `Info.plist` and entitlements. It installs one authoritative model and
+tokenizer tree at
+`~/Library/Containers/com.brandonharvey.steno/Data/Library/Application Support/Steno/Resources`,
+then leaves unchanged assets untouched across app replacement. The installed
 Apple command-line toolchain and macOS SDK remain required.
 
 Use the WhisperKit product from the `argmax-oss-swift` Swift package, pinned to
-an exact release tag in `Package.swift`. Bundle the pinned Core ML model
+an exact release tag in `Package.swift`. Install the pinned Core ML model
 `openai_whisper-large-v3-v20240930_turbo_632MB`, which is a compressed Large v3
 Turbo variant, plus the complete `openai/whisper-large-v3` tokenizer snapshot.
-Commit large model weights through Git-LFS. A clean checkout may use the network
-to resolve SwiftPM and Git-LFS objects; the assembled app must not.
+Commit large model weights through Git-LFS. The repository tree is the install
+source; the stable sandbox copy is the only runtime source. A clean checkout may
+use the network to resolve SwiftPM and Git-LFS objects; the assembled app must not.
 
-Before WhisperKit initialization, verify that the model directories and local
-tokenizer files exist and are not Git-LFS pointers. Missing or malformed assets
+Before WhisperKit initialization, verify that the installed model directories
+and local tokenizer files exist and are not Git-LFS pointers. Missing or malformed assets
 fail locally. Initialize WhisperKit with explicit local `modelFolder` and
 `tokenizerFolder` paths, `load: false`, and `download: false`.
 
@@ -113,8 +115,8 @@ the system denies access with no prompt. Sign with
 `com.apple.security.device.audio-input = true`. Do not grant
 `com.apple.security.network.client`.
 
-Load the model only after Stop and release it after transcription to keep idle
-memory low. Configuring WhisperKit decoding options — voice-activity detection
+Load and retain the model when Steno launches; Record remains unavailable until
+it is ready. Configuring WhisperKit decoding options — voice-activity detection
 and the no-speech, log-probability, and compression-ratio thresholds — is in
 scope and is how the silence hallucination limit in the accuracy gate is met.
 This is distinct from changing the model, which the accuracy gate governs.
@@ -133,8 +135,8 @@ The main-actor model owns the recorder, visible state, and current transcript. A
 small `TranscriptionEngine` actor owns the sole WhisperKit instance and permits
 one inference run at a time. Each session has a generation ID. Reset invalidates
 that ID so late results cannot mutate current UI state. The engine retains the
-model and temporary WAV until the task really exits, then unloads and deletes
-them. Delete any stale Steno WAV on the next launch.
+model until app exit and each temporary WAV until its task really exits, then
+deletes the WAV. Delete any stale Steno WAV on the next launch.
 
 There is no database, document model, background agent, or persistence API.
 Transcript text exists only in memory and on the clipboard after Copy.
@@ -179,7 +181,7 @@ framework boundary that automation cannot prove.
 
 1. From idle, Record creates one temporary WAV and starts one microphone capture.
 2. Stop ends capture and starts exactly one local transcription.
-3. Successful transcription deletes the WAV, releases the model, preserves the
+3. Successful transcription deletes the WAV, retains the prepared model, preserves the
    returned text, and exposes Copy and Reset.
 4. Copy places the exact full transcript on the macOS pasteboard.
 5. Reset from recording or complete deletes the WAV, clears all session data,
@@ -193,7 +195,7 @@ framework boundary that automation cannot prove.
 8. Loss of the input device or a recorder encode error stops capture, deletes
    audio, shows the error, and permits Reset.
 9. Launch cleanup removes a stale Steno WAV left by a forced termination, and
-   concurrent tests prove that Reset cannot unload beneath active inference or
+   concurrent tests prove that Reset cannot disrupt active inference or
    accept a late result from an invalid generation.
 10. With network access disabled, a manual microphone session produces selectable
     text and completes the Record, Stop, Copy, Reset loop.
@@ -224,9 +226,9 @@ accuracy as observed, not guaranteed.
 
 ## Deliberate V1 tradeoff
 
-High-quality local transcription is not a tiny workload. V1 accepts a roughly
-632 MB bundled compressed Turbo model, post-recording latency, and elevated
-memory during transcription to get better text without cloud processing. It
+High-quality local transcription is not a tiny workload. V1 accepts one roughly
+632 MB persistent compressed Turbo model, several hundred MB of idle memory,
+and post-recording latency to get better text without cloud processing. It
 avoids live chunking, model choices, and a second recognition path. If the
 accuracy gate fails, stop and reconsider the model; do not hide the failure with
 UI features.

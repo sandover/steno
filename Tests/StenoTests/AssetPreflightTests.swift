@@ -11,6 +11,18 @@ import Testing
 
 @Suite("AssetPreflightTests", .serialized)
 struct AssetPreflightTests {
+    @Test func derivesInstalledRootFromApplicationSupport() {
+        let applicationSupport = URL(
+            fileURLWithPath: "/Users/test/Library/Application Support",
+            isDirectory: true
+        )
+
+        #expect(
+            InstalledResources.root(in: applicationSupport).path
+                == "/Users/test/Library/Application Support/Steno/Resources"
+        )
+    }
+
     @Test func acceptsPinnedLocalAssets() async throws {
         let locations = try await AssetPreflight.check(resourceRoot: productionResources)
 

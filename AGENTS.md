@@ -31,19 +31,20 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Reset.
   or general machinery merely because a dependency makes them possible.
 - Build and test from the command line with Swift Package Manager. Keep no
   `.xcodeproj`, `.xcworkspace`, Xcode-only build step, or second build path.
-- Use one small script to assemble and ad-hoc-sign the local `.app` bundle from
-  `swift build`; do not introduce a project generator or packaging framework.
-- Bundle the pinned compressed Large v3 Turbo Core ML model
+- Use one small script to assemble and personally sign the local `.app` bundle
+  from `swift build`; do not introduce a project generator or packaging framework.
+- Install one persistent copy of the pinned compressed Large v3 Turbo Core ML model
   `openai_whisper-large-v3-v20240930_turbo_632MB` and
-  the matching `openai/whisper-large-v3` tokenizer. The installed app runs
+  matching `openai/whisper-large-v3` tokenizer in Steno's sandbox Application
+  Support directory. Do not bundle a duplicate inside the replaceable app. The app runs
   inside App Sandbox. It must not have a network-client entitlement, download
   models at runtime, or fall back to remote recognition.
 - Ship as a menu-bar accessory (`LSUIElement`, no Dock icon). Prove the complete
   loop with a headless test against the session model, not XCUITest, which would
   force a second build path.
 - Record to one private temporary file and serialize inference through one
-  transcription engine. Reset clears the UI immediately; audio and model cleanup
-  happen when in-flight inference exits or on the next launch after a crash.
+  transcription engine. Keep the prepared model loaded until app exit. Reset clears
+  the UI immediately; audio cleanup happens when inference exits or on relaunch.
 - Use explicit state with obvious transitions. Avoid hidden global state.
 - Keep components small, independent, and testable; prefer pure state logic.
 - Start every non-trivial source file with a 5-15 line comment stating its
@@ -55,7 +56,7 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Reset.
   app networking, create a parallel implementation, or create a second source
   of truth.
 - Optimize for Brandon's current Mac only. Do not add distribution,
-  notarization, installer, or multi-user compatibility work.
+  notarization, a distributable installer/package, or multi-user compatibility.
 
 ## Communication
 

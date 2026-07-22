@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let audioStore = TemporaryAudioStore()
         _ = try? audioStore.removeStaleRecordings()
         let recorder = MicrophoneRecorder(audioStore: audioStore)
-        let resourceRoot = Bundle.main.resourceURL ?? Bundle.main.bundleURL
+        let resourceRoot = InstalledResources.root()
         let engine = TranscriptionEngine(resourceRoot: resourceRoot)
         let model = SessionModel(recorder: recorder, engine: engine)
         self.model = model
