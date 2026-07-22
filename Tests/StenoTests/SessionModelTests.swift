@@ -15,7 +15,7 @@ struct SessionModelTests {
         let context = SessionTestContext(transcript: "")
         await context.model.record()
 
-        await context.model.stop()
+        await context.model.stop()?.value
 
         #expect(context.model.state == .complete(""))
         #expect(!context.model.canCopy)
@@ -41,7 +41,7 @@ struct SessionModelTests {
     @Test func recorderAndTranscriptionFailuresUseErrorState() async {
         let stopFailure = SessionTestContext(stopError: RecordingFailure.invalidRecording)
         await stopFailure.model.record()
-        await stopFailure.model.stop()
+        await stopFailure.model.stop()?.value
         guard case .error = stopFailure.model.state else {
             Issue.record("Expected recorder error state")
             return
@@ -51,7 +51,7 @@ struct SessionModelTests {
             transcriptionError: SessionTestError.transcription
         )
         await transcriptionFailure.model.record()
-        await transcriptionFailure.model.stop()
+        await transcriptionFailure.model.stop()?.value
         guard case .error = transcriptionFailure.model.state else {
             Issue.record("Expected transcription error state")
             return
@@ -86,7 +86,7 @@ struct SessionModelTests {
     @Test func resetFromCompleteClearsWithoutTouchingRecorder() async {
         let context = SessionTestContext(transcript: "finished")
         await context.model.record()
-        await context.model.stop()
+        await context.model.stop()?.value
 
         context.model.reset()
 
@@ -99,13 +99,13 @@ struct SessionModelTests {
         let gate = SessionTranscriptionGate(result: "late text", waitsForRelease: true)
         let context = SessionTestContext(gate: gate)
         await context.model.record()
-        let stopTask = Task { await context.model.stop() }
+        let stopTask = context.model.stop()
         await gate.waitUntilStarted()
 
         context.model.reset()
         #expect(context.model.state == .idle)
         await gate.release()
-        await stopTask.value
+        await stopTask?.value
 
         #expect(context.model.state == .idle)
         #expect(context.model.transcript.isEmpty)

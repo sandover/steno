@@ -61,11 +61,13 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.level = .floating
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
+        panel.isRestorable = false
         panel.isOpaque = true
         panel.backgroundColor = .windowBackgroundColor
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.delegate = self
         panel.contentView = NSHostingView(rootView: ContentView(model: model))
+        panel.setContentSize(PanelLayout.size(for: model.state))
         panel.center()
     }
 

@@ -17,7 +17,7 @@ struct CompleteLoopTests {
         await context.model.record()
         #expect(context.model.state == .recording)
 
-        await context.model.stop()
+        await context.model.stop()?.value
         #expect(context.model.state == .complete("Every exact spoken word."))
         #expect(context.model.canCopy)
 

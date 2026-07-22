@@ -51,7 +51,7 @@ struct ContentView: View {
                         MicrophoneLevelBars(level: model.recordingLevel)
                         Spacer(minLength: 8)
                         Button("Stop") {
-                            Task { await model.stop() }
+                            model.stop()
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(.red)

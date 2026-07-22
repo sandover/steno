@@ -68,7 +68,7 @@ final class SessionModel: ObservableObject {
     private let writeClipboard: WriteClipboard
     private var generation = 0
     private var isPreparing = false
-    private var transcriptionTask: Task<String, Error>?
+    private var transcriptionTask: Task<Void, Never>?
 
     init(
         recorder: MicrophoneRecorder,
@@ -145,36 +145,47 @@ final class SessionModel: ObservableObject {
         }
     }
 
-    func stop() async {
-        guard state == .recording else { return }
+    @discardableResult
+    func stop() -> Task<Void, Never>? {
+        guard state == .recording else { return nil }
         let audioURL: URL
         do {
             audioURL = try stopRecording()
         } catch {
             state = .error(Self.failure(for: error))
-            return
+            return nil
         }
 
         let transcriptionGeneration = generation
         state = .transcribing
-        let task = Task { try await transcribe(audioURL) }
-        transcriptionTask = task
-
-        do {
-            let text = try await task.value
-            guard generation == transcriptionGeneration, state == .transcribing else { return }
-            transcriptionTask = nil
-            state = .complete(text)
-        } catch is CancellationError {
-            if generation == transcriptionGeneration, state == .transcribing {
-                transcriptionTask = nil
-                state = .idle
+        let transcribe = self.transcribe
+        let task = Task { @MainActor [weak self] in
+            do {
+                let text = try await transcribe(audioURL)
+                guard let self,
+                      self.generation == transcriptionGeneration,
+                      self.state == .transcribing
+                else { return }
+                self.transcriptionTask = nil
+                self.state = .complete(text)
+            } catch is CancellationError {
+                guard let self,
+                      self.generation == transcriptionGeneration,
+                      self.state == .transcribing
+                else { return }
+                self.transcriptionTask = nil
+                self.state = .idle
+            } catch {
+                guard let self,
+                      self.generation == transcriptionGeneration,
+                      self.state == .transcribing
+                else { return }
+                self.transcriptionTask = nil
+                self.state = .error(Self.failure(for: error))
             }
-        } catch {
-            guard generation == transcriptionGeneration, state == .transcribing else { return }
-            transcriptionTask = nil
-            state = .error(Self.failure(for: error))
         }
+        transcriptionTask = task
+        return task
     }
 
     @discardableResult
