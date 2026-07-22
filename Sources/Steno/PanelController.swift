@@ -86,10 +86,12 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func observeState() {
-        stateObservation = model.$state.sink { [weak self] state in
-            guard let self else { return }
-            self.panel.setContentSize(PanelLayout.size(for: state))
-        }
+        stateObservation = model.$state
+            .receive(on: RunLoop.main)
+            .sink { [weak self] state in
+                guard let self else { return }
+                self.panel.setContentSize(PanelLayout.size(for: state))
+            }
         preparationObservation = model.$preparationState.sink { [weak self] state in
             self?.updateStatusIcon(for: state)
         }
