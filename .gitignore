@@ -1,0 +1,9 @@
+.scratch/
+.ergo/lock
+
+# Build output
+.build/
+Steno.app/
+
+# Private, consented accuracy-benchmark fixtures (audio + reference transcripts)
+/Fixtures/
