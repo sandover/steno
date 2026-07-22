@@ -1,17 +1,18 @@
 /*
- Provides the native SwiftUI application entry point for Steno.
- Exports StenoApp and, for now, the smallest buildable placeholder scene.
- Later UI work replaces the placeholder without adding another app lifecycle.
- The application must remain a local process with no account or network setup.
+ Provides Steno's sole application entry point and AppKit lifecycle bridge.
+ The SwiftUI scene intentionally creates no ordinary window or Dock workflow.
+ AppDelegate owns the one status item, floating panel, and ephemeral session.
+ The application remains a local accessory with no account or network setup.
 */
 import SwiftUI
 
 @main
 struct StenoApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
-        WindowGroup(AppIdentity.name) {
-            Text(AppIdentity.name)
-                .padding()
+        Settings {
+            EmptyView()
         }
     }
 }

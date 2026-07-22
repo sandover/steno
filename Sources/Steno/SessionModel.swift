@@ -68,6 +68,7 @@ final class SessionModel: ObservableObject {
     }
 
     init(
+        initialState: State = .idle,
         startRecording: @escaping StartRecording,
         stopRecording: @escaping StopRecording,
         resetRecording: @escaping ResetRecording,
@@ -79,6 +80,7 @@ final class SessionModel: ObservableObject {
         self.resetRecording = resetRecording
         self.transcribe = transcribe
         self.writeClipboard = writeClipboard
+        state = initialState
     }
 
     func record() async {
