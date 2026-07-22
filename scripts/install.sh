@@ -3,6 +3,7 @@
 # The fixed destination is Brandon's local Applications directory.
 # Staging occurs beside the destination so the final rename is atomic.
 # An existing installed process receives TERM and must exit before replacement.
+# A fixed personal Apple Development identity keeps the local app identity stable.
 # Signing grants only App Sandbox and microphone input; network access is absent.
 # Re-running this script replaces the bundle and leaves one verified process.
 
@@ -12,7 +13,11 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_PARENT="/Users/brandonharvey/Applications"
 INSTALL_APP="$INSTALL_PARENT/Steno.app"
 INSTALL_EXECUTABLE="$INSTALL_APP/Contents/MacOS/Steno"
+SIGNING_IDENTITY="D48285CCB96EB4280D7921EF44E210AE3FCA316B"
+SIGNING_AUTHORITY="Apple Development: sandover@gmail.com (AA7X6693E3)"
+SIGNING_TEAM="GS88W79LPB"
 STAGING_DIR=""
+AVAILABLE_IDENTITIES=""
 
 cleanup() {
     if [[ -n "$STAGING_DIR" && -d "$STAGING_DIR" ]]; then
@@ -36,7 +41,17 @@ installed_pids() {
 verify_bundle() {
     local app="$1"
     local entitlement_dump="$STAGING_DIR/verified-entitlements.plist"
+    local signature_details
     /usr/bin/codesign --verify --deep --strict "$app"
+    signature_details="$(/usr/bin/codesign --display --verbose=4 "$app" 2>&1)"
+    /usr/bin/grep -Fq "Authority=$SIGNING_AUTHORITY" <<< "$signature_details" \
+        || { echo "Personal Apple Development authority is missing." >&2; exit 1; }
+    /usr/bin/grep -Fq "TeamIdentifier=$SIGNING_TEAM" <<< "$signature_details" \
+        || { echo "Personal Apple Development signature is missing." >&2; exit 1; }
+    if /usr/bin/grep -Fq "Signature=adhoc" <<< "$signature_details"; then
+        echo "Ad-hoc signatures are not accepted." >&2
+        exit 1
+    fi
     /bin/rm -f "$entitlement_dump"
     /usr/bin/codesign --display --entitlements "$entitlement_dump" --xml "$app" 2>/dev/null
     [[ "$(/usr/bin/plutil -extract 'com\.apple\.security\.app-sandbox' raw -o - "$entitlement_dump")" == "true" ]] \
@@ -72,6 +87,9 @@ stop_installed_app() {
 
 mkdir -p "$INSTALL_PARENT"
 cd "$ROOT_DIR"
+AVAILABLE_IDENTITIES="$(/usr/bin/security find-identity -v -p codesigning)"
+/usr/bin/grep -Fq "$SIGNING_IDENTITY" <<< "$AVAILABLE_IDENTITIES" \
+    || { echo "Personal Apple Development signing identity is unavailable." >&2; exit 1; }
 /usr/bin/swift build -c release
 BIN_DIR="$(/usr/bin/swift build -c release --show-bin-path)"
 [[ -x "$BIN_DIR/Steno" ]] || { echo "Release executable is missing." >&2; exit 1; }
@@ -87,7 +105,7 @@ mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources"
 [[ -s "$STAGED_APP/Contents/Resources/AssetManifest.json" ]]
 [[ -d "$STAGED_APP/Contents/Resources/Models/openai_whisper-large-v3-v20240930_turbo_632MB/AudioEncoder.mlmodelc" ]]
 [[ -s "$STAGED_APP/Contents/Resources/Tokenizers/openai-whisper-large-v3/tokenizer.json" ]]
-/usr/bin/codesign --force --sign - \
+/usr/bin/codesign --force --sign "$SIGNING_IDENTITY" \
     --entitlements "$ROOT_DIR/Support/Steno.entitlements" "$STAGED_APP"
 verify_bundle "$STAGED_APP"
 
