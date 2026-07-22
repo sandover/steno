@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "normalization": {
+    "version": 1,
+    "unicode": "precomposed canonical mapping",
+    "caseFolding": "Unicode lowercase",
+    "nonAlphanumeric": "replace each run with one space",
+    "whitespace": "trim and collapse to one ASCII space"
+  },
+  "samples": []
+}

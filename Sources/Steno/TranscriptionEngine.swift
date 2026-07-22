@@ -8,6 +8,16 @@
 import Foundation
 import WhisperKit
 
+struct TranscriptionDecodingSettings: Codable, Equatable, Sendable {
+    let task: String
+    let language: String?
+    let usePrefillPrompt: Bool
+    let detectLanguage: Bool
+    let skipSpecialTokens: Bool
+    let concurrentWorkerCount: Int
+    let chunkingStrategy: String
+}
+
 actor TranscriptionEngine {
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
     typealias Unload = @Sendable () async -> Void
@@ -122,13 +132,23 @@ actor TranscriptionEngine {
         waiters.removeFirst().resume()
     }
 
-    private static let decodingOptions = DecodingOptions(
-        task: .transcribe,
+    static let decodingSettings = TranscriptionDecodingSettings(
+        task: "transcribe",
         language: nil,
         usePrefillPrompt: true,
         detectLanguage: true,
         skipSpecialTokens: true,
         concurrentWorkerCount: 1,
-        chunkingStrategy: .vad
+        chunkingStrategy: "vad"
     )
+
+    private static var decodingOptions: DecodingOptions { DecodingOptions(
+        task: .transcribe,
+        language: decodingSettings.language,
+        usePrefillPrompt: decodingSettings.usePrefillPrompt,
+        detectLanguage: decodingSettings.detectLanguage,
+        skipSpecialTokens: decodingSettings.skipSpecialTokens,
+        concurrentWorkerCount: decodingSettings.concurrentWorkerCount,
+        chunkingStrategy: .vad
+    ) }
 }
