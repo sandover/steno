@@ -26,7 +26,7 @@ struct AssetPreflightTests {
     @Test func acceptsPinnedLocalAssets() async throws {
         let locations = try await AssetPreflight.check(resourceRoot: productionResources)
 
-        #expect(locations.manifest.schemaVersion == 1)
+        #expect(locations.manifest.schemaVersion == 2)
         #expect(locations.manifest.model.revision.count == 40)
         #expect(locations.manifest.tokenizer.revision.count == 40)
     }

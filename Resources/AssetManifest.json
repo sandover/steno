@@ -1,13 +1,32 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "downloader": {
+    "package": "hf",
+    "version": "1.24.0"
+  },
   "model": {
     "repository": "argmaxinc/whisperkit-coreml",
     "revision": "97a5bf9bbc74c7d9c12c755d04dea59e672e3808",
-    "directory": "Models/openai_whisper-large-v3-v20240930_turbo_632MB"
+    "sourceDirectory": "openai_whisper-large-v3-v20240930_turbo_632MB",
+    "directory": "Models/openai_whisper-large-v3-v20240930_turbo_632MB",
+    "sha256": "45025ea33b68be09a7834378ba00d1015b5b173a6c42da9ed6a07c0822bd4efa"
   },
   "tokenizer": {
     "repository": "openai/whisper-large-v3",
     "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
-    "directory": "Tokenizers/openai-whisper-large-v3"
+    "directory": "Tokenizers/openai-whisper-large-v3",
+    "sha256": "42c432dad05c0ebe2ebb3b3f6c27efffa64f14f8008b6f0949026d17c4d104db",
+    "files": [
+      "added_tokens.json",
+      "config.json",
+      "generation_config.json",
+      "merges.txt",
+      "normalizer.json",
+      "preprocessor_config.json",
+      "special_tokens_map.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "vocab.json"
+    ]
   }
 }

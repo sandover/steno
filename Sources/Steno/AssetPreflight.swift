@@ -2,7 +2,7 @@
  Locates and validates Steno's single pinned model and tokenizer before WhisperKit.
  InstalledResources derives the sole runtime root from sandbox Application Support.
  AssetPreflight accepts an explicit resource root so tests and the app share checks.
- It rejects missing, empty, malformed, or unresolved Git-LFS files locally.
+ It rejects missing, empty, or malformed files before inference begins.
  Successful output contains the only model and tokenizer URLs inference may use.
  Tokenizer loading is semantic and local; this code never names a remote fallback.
 */
@@ -28,15 +28,31 @@ enum InstalledResources {
 }
 
 struct AssetManifest: Codable, Equatable, Sendable {
-    struct Asset: Codable, Equatable, Sendable {
+    struct Downloader: Codable, Equatable, Sendable {
+        let package: String
+        let version: String
+    }
+
+    struct Model: Codable, Equatable, Sendable {
+        let repository: String
+        let revision: String
+        let sourceDirectory: String
+        let directory: String
+        let sha256: String
+    }
+
+    struct Tokenizer: Codable, Equatable, Sendable {
         let repository: String
         let revision: String
         let directory: String
+        let sha256: String
+        let files: [String]
     }
 
     let schemaVersion: Int
-    let model: Asset
-    let tokenizer: Asset
+    let downloader: Downloader
+    let model: Model
+    let tokenizer: Tokenizer
 }
 
 struct AssetLocations: Equatable, Sendable {
@@ -71,18 +87,6 @@ enum AssetPreflight {
         "MelSpectrogram.mlmodelc",
         "TextDecoder.mlmodelc",
     ]
-    private static let tokenizerFiles = [
-        "added_tokens.json",
-        "config.json",
-        "generation_config.json",
-        "merges.txt",
-        "normalizer.json",
-        "preprocessor_config.json",
-        "special_tokens_map.json",
-        "tokenizer.json",
-        "tokenizer_config.json",
-        "vocab.json",
-    ]
     private static let requiredTokens = [
         "<|endoftext|>",
         "<|startoftranscript|>",
@@ -103,8 +107,15 @@ enum AssetPreflight {
         } catch {
             throw AssetPreflightError.malformed("AssetManifest.json")
         }
-        guard manifest.schemaVersion == 1 else {
+        guard manifest.schemaVersion == 2 else {
             throw AssetPreflightError.malformed("unsupported asset manifest version")
+        }
+        guard manifest.downloader.package == "hf",
+              manifest.downloader.version.isEmpty == false,
+              manifest.model.sha256.count == 64,
+              manifest.tokenizer.sha256.count == 64,
+              manifest.tokenizer.files.isEmpty == false else {
+            throw AssetPreflightError.malformed("incomplete asset manifest")
         }
 
         let modelFolder = resourceRoot.appendingPathComponent(
@@ -122,7 +133,7 @@ enum AssetPreflight {
                 relativeTo: resourceRoot
             )
         }
-        for file in tokenizerFiles {
+        for file in manifest.tokenizer.files {
             try inspectFile(
                 tokenizerFolder.appendingPathComponent(file),
                 relativeTo: resourceRoot
