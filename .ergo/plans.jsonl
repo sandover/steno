@@ -161,3 +161,4 @@
 {"type":"message","ts":"2026-07-23T16:05:46.510494Z","data":{"task_id":"XPL4A4","kind":"done","text":"Rewrote unpublished main, verified a 120 KB fresh clone with no LFS paths, and passed all 58 tests without speech payloads in source.","ts":"2026-07-23T16:05:46.510494Z"}}
 {"type":"unclaim","ts":"2026-07-23T16:05:46.510494Z","data":{"id":"XPL4A4","ts":"2026-07-23T16:05:46.510494Z"}}
 {"type":"state","ts":"2026-07-23T16:05:46.510494Z","data":{"id":"XPL4A4","state":"done","ts":"2026-07-23T16:05:46.510494Z"}}
+{"type":"message","ts":"2026-07-23T16:07:29.834844Z","data":{"task_id":"XPL4A4","kind":"done","text":"Published rewritten main to git@github.com:sandover/steno.git and established origin/main tracking.","ts":"2026-07-23T16:07:29.834844Z"}}
