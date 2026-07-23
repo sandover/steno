@@ -3,7 +3,7 @@
 ## Aim
 
 Steno is a one-button, microphone-only macOS recorder and local transcriber.
-Protect this narrow product. The core loop is Record, Stop, Copy, Reset.
+Protect this narrow product. The core loop is Record, Stop, Copy, Done.
 
 ## Ruthless simplicity
 

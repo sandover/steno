@@ -1,5 +1,5 @@
 /*
- Owns Steno's five visible states and the complete Record, Stop, Copy, Reset loop.
+ Owns Steno's five visible states and the complete Record, Stop, Copy, Done loop.
  SessionModel is the sole source of visible transcript and session generation.
  Recorder and engine behavior enter through direct closures for headless tests.
  Orthogonal model readiness keeps Record unavailable during launch preparation.

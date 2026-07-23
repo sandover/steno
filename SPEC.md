@@ -11,7 +11,7 @@ The complete loop is:
 2. Speak or hold a meeting near the Mac microphone.
 3. Click **Stop** and wait while the recording is transcribed locally.
 4. Select any text or click **Copy** for the whole transcript.
-5. Click **Reset** to return to the initial state.
+5. Click **Done** to return to the initial state.
 
 ### Success
 
@@ -20,8 +20,8 @@ The complete loop is:
 - Compressed Whisper Large v3 Turbo runs on the Mac with networking disabled.
 - The transcript is visible, selectable, and copyable in full.
 - A fixed meeting-audio benchmark meets the accuracy gate below.
-- Reset removes the current transcript and returns to one Record button.
-- Reset clears visible data immediately. Temporary audio remains only until its
+- Done removes the current transcript and returns to one Record button.
+- Done clears visible data immediately. Temporary audio remains only until its
   owning task exits; forced-termination residue is removed on the next launch.
 - The idle app is obvious enough to use on impulse. It keeps the prepared model
   resident so Stop never pays model-loading or specialization latency.
@@ -46,14 +46,15 @@ all Spaces. It has no sidebar, title hierarchy, navigation, or onboarding.
 
 The app is a menu-bar accessory (`LSUIElement`) with no Dock icon. A single
 status-bar item shows or hides the panel and offers Quit. Quitting has the same
-data-clearing effect as Reset.
+data-clearing effect as Done.
 
-- **Idle:** one prominent Record button.
+- **Idle:** one prominent Record button in the same compact panel used while recording.
 - **Recording:** show a compact red Recording label, live microphone-level bars,
   and one Stop button.
 - **Transcribing:** show a spinner, Transcribing, and Reset.
-- **Complete:** show the transcript with Copy and Reset buttons. When the
-  result is empty, show the empty field and Reset only; do not show Copy.
+- **Complete:** keep the compact width and grow the panel vertically to show the
+  transcript. Put a subtle, borderless Copy icon at lower left and Done at lower
+  right. When the result is empty, show the empty field and Done only.
 - **Error:** show one plain sentence and Reset. Link to macOS Settings only when
   permission was denied.
 
@@ -64,14 +65,15 @@ loop works.
 
 ### Interaction rules
 
-- Record never overwrites an existing transcript; Reset starts a new session.
+- Record never overwrites an existing transcript; Done starts a new session.
 - Copy writes the entire transcript as plain text and briefly changes its icon
   to a checkmark.
-- Reset stops capture, clears visible session data, and collapses the panel.
-  During transcription it returns the UI to idle immediately, invalidates the
+- Reset during recording or transcription stops capture, clears visible session
+  data, and collapses the panel. Done has the same effect after completion.
+  During transcription Reset returns the UI to idle immediately, invalidates the
   session generation, and requests cancellation. The engine discards late
   results and deletes temporary audio only after the in-flight task exits.
-- Closing or quitting has the same data-clearing effect as Reset.
+- Closing or quitting has the same data-clearing effect as Done.
 - An empty result is valid. Complete state shows Copy only once the transcript
   contains text.
 
@@ -170,7 +172,7 @@ retain the recording or offer retry because that creates file-management state.
 
 Implement each behavior from a failing test. Unit-test state transitions and
 side effects with simulated permission, audio, and transcription events. Cover
-the complete Record, Stop, Copy, Reset loop as a headless test that drives the
+the complete Record, Stop, Copy, Done loop as a headless test that drives the
 main-actor model through the test seam and asserts the state sequence and side
 effects; do not use XCUITest, which would require an Xcode app host and a second
 build path. The on-screen loop is proven by the manual offline session in
@@ -182,10 +184,10 @@ framework boundary that automation cannot prove.
 1. From idle, Record creates one temporary WAV and starts one microphone capture.
 2. Stop ends capture and starts exactly one local transcription.
 3. Successful transcription deletes the WAV, retains the prepared model, preserves the
-   returned text, and exposes Copy and Reset.
+   returned text, and exposes Copy and Done.
 4. Copy places the exact full transcript on the macOS pasteboard.
-5. Reset from recording or complete deletes the WAV, clears all session data,
-   and returns to idle. Reset during transcription returns to idle immediately,
+5. Reset from recording or Done from complete deletes the WAV, clears all session
+   data, and returns to idle. Reset during transcription returns to idle immediately,
    discards late results, and deletes the WAV after the task exits.
 6. Denied microphone permission does not create a recording and produces an
    actionable error.
@@ -198,7 +200,7 @@ framework boundary that automation cannot prove.
    concurrent tests prove that Reset cannot disrupt active inference or
    accept a late result from an invalid generation.
 10. With network access disabled, a manual microphone session produces selectable
-    text and completes the Record, Stop, Copy, Reset loop.
+    text and completes the Record, Stop, Copy, Done loop.
 
 ### Accuracy gate
 
@@ -221,7 +223,7 @@ different model unless the replacement passes this same benchmark.
 Finish V1 only when all automated tests, the accuracy gate, entitlement
 inspection, and the manual offline loop pass on Brandon's current Mac. The final
 gate installs the app at `/Users/brandonharvey/Applications/Steno.app`, launches
-it, and completes one real Record, Stop, Copy, Reset session. Report speech
+it, and completes one real Record, Stop, Copy, Done session. Report speech
 accuracy as observed, not guaranteed.
 
 ## Deliberate V1 tradeoff

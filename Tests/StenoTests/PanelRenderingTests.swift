@@ -12,6 +12,17 @@ import Testing
 @Suite("PanelRenderingTests", .serialized)
 @MainActor
 struct PanelRenderingTests {
+    @Test func coreLoopKeepsOneCompactWidth() {
+        let idle = PanelLayout.size(for: .idle, preparationState: .ready)
+        let recording = PanelLayout.size(for: .recording, preparationState: .ready)
+        let complete = PanelLayout.size(for: .complete("Transcript"), preparationState: .ready)
+
+        #expect(idle == recording)
+        #expect(complete.width == recording.width)
+        #expect(complete.height > recording.height)
+        #expect(complete.height == 220)
+    }
+
     @Test func rendersEveryState() throws {
         let states: [(String, SessionModel.State, SessionModel.PreparationState)] = [
             ("preparing", .idle, .preparing),
@@ -44,7 +55,7 @@ struct PanelRenderingTests {
 
         for (name, state, preparationState) in states {
             let model = previewModel(state: state, preparationState: preparationState)
-            let size = PanelLayout.size(for: state)
+            let size = PanelLayout.size(for: state, preparationState: preparationState)
             let hostingView = NSHostingView(rootView: ContentView(model: model))
             hostingView.appearance = NSAppearance(named: .aqua)
             hostingView.frame = NSRect(origin: .zero, size: size)

@@ -1,7 +1,7 @@
 /*
  Drives the complete product loop without an app host or microphone permission.
  The test asserts every visible state plus the exact clipboard and Reset effects.
- This is the authoritative automated proof of Record, Stop, Copy, Reset behavior.
+ This is the authoritative automated proof of Record, Stop, Copy, Done behavior.
  Hardware capture and selectable on-screen text remain final manual acceptance.
 */
 import Testing
@@ -10,7 +10,7 @@ import Testing
 @Suite("CompleteLoopTests")
 @MainActor
 struct CompleteLoopTests {
-    @Test func recordStopCopyResetLoop() async {
+    @Test func recordStopCopyDoneLoop() async {
         let context = SessionTestContext(transcript: "Every exact spoken word.")
         #expect(context.model.state == .idle)
 

@@ -1,6 +1,6 @@
 /*
  Renders SessionModel.State as Steno's complete one-panel product interface.
- Each state contains only the controls needed for Record, Stop, Copy, or Reset.
+ Each state contains only the controls needed for Record, Stop, Copy, or Done.
  Transcript content is always read-only and selectable through one AppKit wrapper.
  Permission denial alone exposes the direct macOS microphone-settings link.
  No view owns parallel session state, files, history, settings, or navigation.
@@ -75,11 +75,14 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: model.didCopy ? "checkmark" : "doc.on.doc")
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .padding(4)
                         .accessibilityLabel(model.didCopy ? "Transcript copied" : "Copy transcript")
                         .help("Copy transcript")
                     }
-                    Button("Reset", action: model.reset)
+                    Spacer()
+                    Button("Done", action: model.reset)
                 }
 
             case let .error(failure):

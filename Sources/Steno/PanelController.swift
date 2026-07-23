@@ -3,23 +3,35 @@
  Left click toggles the panel; right click exposes the sole Quit command.
  The panel floats above ordinary windows and follows the user across Spaces.
  Closing hides and resets the ephemeral session rather than destroying state UI.
- Each state gets a parsimonious default size; transcript windows stay resizable.
+ Ready, recording, and completion keep one compact width; transcript grows vertically.
+ Preparation and errors alone receive extra width for their explanatory text.
+ Transcript windows stay resizable beyond their small default reading height.
 */
 import AppKit
 import Combine
 import SwiftUI
 
 enum PanelLayout {
-    static func size(for state: SessionModel.State) -> NSSize {
+    static func size(
+        for state: SessionModel.State,
+        preparationState: SessionModel.PreparationState
+    ) -> NSSize {
         switch state {
         case .idle:
-            NSSize(width: 420, height: 130)
+            switch preparationState {
+            case .ready:
+                NSSize(width: 260, height: 74)
+            case .preparing:
+                NSSize(width: 420, height: 130)
+            case .failed:
+                NSSize(width: 420, height: 210)
+            }
         case .recording:
             NSSize(width: 260, height: 74)
         case .transcribing:
             NSSize(width: 260, height: 110)
         case .complete:
-            NSSize(width: 420, height: 340)
+            NSSize(width: 260, height: 220)
         case .error:
             NSSize(width: 420, height: 210)
         }
@@ -40,7 +52,10 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel = NSPanel(
             contentRect: NSRect(
                 origin: .zero,
-                size: PanelLayout.size(for: model.state)
+                size: PanelLayout.size(
+                    for: model.state,
+                    preparationState: model.preparationState
+                )
             ),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
@@ -69,7 +84,10 @@ final class PanelController: NSObject, NSWindowDelegate {
         let hostingView = NSHostingView(rootView: ContentView(model: model))
         hostingView.sizingOptions = []
         panel.contentView = hostingView
-        panel.setContentSize(PanelLayout.size(for: model.state))
+        panel.setContentSize(PanelLayout.size(
+            for: model.state,
+            preparationState: model.preparationState
+        ))
         panel.center()
     }
 
@@ -90,11 +108,21 @@ final class PanelController: NSObject, NSWindowDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] state in
                 guard let self else { return }
-                self.panel.setContentSize(PanelLayout.size(for: state))
+                self.panel.setContentSize(PanelLayout.size(
+                    for: state,
+                    preparationState: self.model.preparationState
+                ))
             }
-        preparationObservation = model.$preparationState.sink { [weak self] state in
-            self?.updateStatusIcon(for: state)
-        }
+        preparationObservation = model.$preparationState
+            .receive(on: RunLoop.main)
+            .sink { [weak self] preparationState in
+                guard let self else { return }
+                self.updateStatusIcon(for: preparationState)
+                self.panel.setContentSize(PanelLayout.size(
+                    for: self.model.state,
+                    preparationState: preparationState
+                ))
+            }
     }
 
     private func updateStatusIcon(for state: SessionModel.PreparationState) {
