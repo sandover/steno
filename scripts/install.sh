@@ -1,9 +1,10 @@
 #!/bin/bash
 # Builds, signs, installs, launches, and verifies Brandon's sole Steno app.
 # Speech assets live once in Steno's sandbox container, outside the app bundle.
-# An unchanged pinned asset tree preserves those files across app replacement.
-# Changed or incomplete assets and the app bundle are staged and replaced atomically.
-# An installed process receives TERM and must exit before either replacement.
+# prepare-model.sh owns their acquisition and integrity contract independently.
+# Installation requires that persistent tree but never copies or changes it.
+# The app bundle alone is staged and replaced atomically.
+# An installed process receives TERM and must exit before replacement.
 # A fixed personal Apple Development identity keeps the sandbox identity stable.
 # Signing grants only App Sandbox and microphone input; network access is absent.
 
@@ -13,58 +14,16 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_PARENT="/Users/brandonharvey/Applications"
 INSTALL_APP="$INSTALL_PARENT/Steno.app"
 INSTALL_EXECUTABLE="$INSTALL_APP/Contents/MacOS/Steno"
-ASSET_PARENT="/Users/brandonharvey/Library/Containers/com.brandonharvey.steno/Data/Library/Application Support/Steno"
-ASSET_ROOT="$ASSET_PARENT/Resources"
-SOURCE_ASSETS="$ROOT_DIR/Resources"
 SIGNING_IDENTITY="D48285CCB96EB4280D7921EF44E210AE3FCA316B"
 SIGNING_AUTHORITY="Apple Development: sandover@gmail.com (AA7X6693E3)"
 SIGNING_TEAM="GS88W79LPB"
 STAGING_DIR=""
-ASSET_STAGING_DIR=""
-STAGED_ASSET_ROOT=""
 AVAILABLE_IDENTITIES=""
 
 cleanup() {
     if [[ -n "$STAGING_DIR" && -d "$STAGING_DIR" ]]; then
         /bin/rm -rf "$STAGING_DIR"
     fi
-    if [[ -n "$ASSET_STAGING_DIR" && -d "$ASSET_STAGING_DIR" ]]; then
-        /bin/rm -rf "$ASSET_STAGING_DIR"
-    fi
-}
-
-verify_assets() {
-    local root="$1"
-    local component file
-
-    [[ -s "$root/AssetManifest.json" ]] || return 1
-    for component in AudioEncoder MelSpectrogram TextDecoder; do
-        [[ -d "$root/Models/openai_whisper-large-v3-v20240930_turbo_632MB/$component.mlmodelc" ]] \
-            || return 1
-    done
-    for file in \
-        added_tokens.json config.json generation_config.json merges.txt \
-        normalizer.json preprocessor_config.json special_tokens_map.json \
-        tokenizer.json tokenizer_config.json vocab.json; do
-        [[ -s "$root/Tokenizers/openai-whisper-large-v3/$file" ]] || return 1
-    done
-    [[ -z "$(/usr/bin/find "$root" -type f -size 0 -print -quit)" ]]
-}
-
-stage_assets_if_needed() {
-    if verify_assets "$ASSET_ROOT" \
-        && /usr/bin/diff -qr "$SOURCE_ASSETS" "$ASSET_ROOT" >/dev/null; then
-        return
-    fi
-
-    mkdir -p "$ASSET_PARENT"
-    ASSET_STAGING_DIR="$(/usr/bin/mktemp -d "$ASSET_PARENT/.Resources-install.XXXXXX")"
-    STAGED_ASSET_ROOT="$ASSET_STAGING_DIR/Resources"
-    /usr/bin/ditto --clone --norsrc "$SOURCE_ASSETS" "$STAGED_ASSET_ROOT"
-    verify_assets "$STAGED_ASSET_ROOT" \
-        || { echo "Staged speech assets are incomplete." >&2; exit 1; }
-    /usr/bin/diff -qr "$SOURCE_ASSETS" "$STAGED_ASSET_ROOT" >/dev/null \
-        || { echo "Staged speech assets do not match the repository." >&2; exit 1; }
 }
 trap cleanup EXIT
 
@@ -127,17 +86,19 @@ stop_installed_app() {
     exit 1
 }
 
-mkdir -p "$INSTALL_PARENT" "$ASSET_PARENT"
+mkdir -p "$INSTALL_PARENT"
 cd "$ROOT_DIR"
+"$ROOT_DIR/scripts/prepare-model.sh" --check \
+    || {
+        echo "Run ./scripts/prepare-model.sh once before installing Steno." >&2
+        exit 1
+    }
 AVAILABLE_IDENTITIES="$(/usr/bin/security find-identity -v -p codesigning)"
 /usr/bin/grep -Fq "$SIGNING_IDENTITY" <<< "$AVAILABLE_IDENTITIES" \
     || { echo "Personal Apple Development signing identity is unavailable." >&2; exit 1; }
 /usr/bin/swift build -c release
 BIN_DIR="$(/usr/bin/swift build -c release --show-bin-path)"
 [[ -x "$BIN_DIR/Steno" ]] || { echo "Release executable is missing." >&2; exit 1; }
-verify_assets "$SOURCE_ASSETS" \
-    || { echo "Repository speech assets are incomplete." >&2; exit 1; }
-stage_assets_if_needed
 
 STAGING_DIR="$(/usr/bin/mktemp -d "$INSTALL_PARENT/.Steno-install.XXXXXX")"
 STAGED_APP="$STAGING_DIR/Steno.app"
@@ -153,13 +114,9 @@ mkdir -p "$STAGED_APP/Contents/MacOS"
 verify_bundle "$STAGED_APP"
 
 stop_installed_app
-if [[ -n "$STAGED_ASSET_ROOT" ]]; then
-    /usr/bin/swift "$ROOT_DIR/scripts/AtomicReplace.swift" "$STAGED_ASSET_ROOT" "$ASSET_ROOT"
-fi
 /usr/bin/swift "$ROOT_DIR/scripts/AtomicReplace.swift" "$STAGED_APP" "$INSTALL_APP"
 verify_bundle "$INSTALL_APP"
-verify_assets "$ASSET_ROOT" \
-    || { echo "Installed speech assets are incomplete." >&2; exit 1; }
+"$ROOT_DIR/scripts/prepare-model.sh" --check
 /usr/bin/open -n "$INSTALL_APP"
 
 for attempt in {1..100}; do

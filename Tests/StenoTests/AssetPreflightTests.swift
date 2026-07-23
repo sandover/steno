@@ -1,9 +1,9 @@
 /*
  Proves offline asset validation fails before WhisperKit can use remote fallback.
- The suite mutates temporary copies of the manifest rather than production assets.
- One integration check loads the committed tokenizer snapshot from local disk.
- Missing files, empty files, and unresolved Git-LFS pointers stay distinguishable.
- The production resource root is derived from this test file, not process cwd.
+ The suite builds tiny structural fixtures from the tracked pinned manifest.
+ One optional integration check loads the persistent installed tokenizer.
+ Missing files, empty files, and malformed manifests stay distinguishable.
+ Model-free clones retain the structural tests and skip only installed integration.
 */
 import Foundation
 import Testing
@@ -23,8 +23,12 @@ struct AssetPreflightTests {
         )
     }
 
-    @Test func acceptsPinnedLocalAssets() async throws {
-        let locations = try await AssetPreflight.check(resourceRoot: productionResources)
+    @Test(.enabled(
+        if: FileManager.default.fileExists(atPath: installedResources.path),
+        "Run scripts/prepare-model.sh to install the pinned speech assets"
+    ))
+    func acceptsPinnedLocalAssets() async throws {
+        let locations = try await AssetPreflight.check(resourceRoot: installedResources)
 
         #expect(locations.manifest.schemaVersion == 2)
         #expect(locations.manifest.model.revision.count == 40)
@@ -46,35 +50,13 @@ struct AssetPreflightTests {
         }
     }
 
-    @Test func rejectsUnresolvedGitLFSPointer() async throws {
-        let root = try temporaryFixture()
-        let tokenizer = root.appendingPathComponent(
-            "Tokenizers/openai-whisper-large-v3/tokenizer.json"
-        )
-        try Data("version https://git-lfs.github.com/spec/v1\n".utf8).write(to: tokenizer)
-
-        await #expect(throws: AssetPreflightError.unresolvedGitLFS(
-            "Tokenizers/openai-whisper-large-v3/tokenizer.json"
-        )) {
-            try await AssetPreflight.check(resourceRoot: root)
-        }
-    }
-
-    private var productionResources: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("Resources", isDirectory: true)
-    }
-
     private func temporaryFixture() throws -> URL {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("StenoAssetTest-\(UUID().uuidString)", isDirectory: true)
         let manager = FileManager.default
         try manager.createDirectory(at: root, withIntermediateDirectories: true)
         try manager.copyItem(
-            at: productionResources.appendingPathComponent("AssetManifest.json"),
+            at: assetRepositoryRoot.appendingPathComponent("Resources/AssetManifest.json"),
             to: root.appendingPathComponent("AssetManifest.json")
         )
 

@@ -86,7 +86,7 @@ struct TranscriptionEngineTests {
     }
 
     @Test func configurationCannotDownloadOrLoadEarly() async throws {
-        let assets = try await AssetPreflight.check(resourceRoot: productionResources)
+        let assets = try testAssetLocations()
         let configuration = TranscriptionEngine.configuration(for: assets)
 
         #expect(configuration.modelFolder == assets.modelFolder.path)
@@ -103,18 +103,26 @@ private enum TestInferenceError: Error, Equatable {
 
 func testEngine(probe: EngineProbe) -> TranscriptionEngine {
     TranscriptionEngine(
-        resourceRoot: productionResources,
+        resourceRoot: assetRepositoryRoot,
+        assetLoader: { _ in try testAssetLocations() },
         inference: { url, locations in try await probe.run(url, locations: locations) },
         unload: { await probe.unload() }
     )
 }
 
-var productionResources: URL {
-    URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .deletingLastPathComponent()
-        .appendingPathComponent("Resources", isDirectory: true)
+func testAssetLocations() throws -> AssetLocations {
+    let manifest = try JSONDecoder().decode(
+        AssetManifest.self,
+        from: Data(
+            contentsOf: assetRepositoryRoot
+                .appendingPathComponent("Resources/AssetManifest.json")
+        )
+    )
+    return AssetLocations(
+        manifest: manifest,
+        modelFolder: URL(fileURLWithPath: "/tmp/StenoTestModel", isDirectory: true),
+        tokenizerFolder: URL(fileURLWithPath: "/tmp/StenoTestTokenizer", isDirectory: true)
+    )
 }
 
 func temporaryAudio() throws -> URL {

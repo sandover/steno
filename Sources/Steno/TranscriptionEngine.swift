@@ -1,6 +1,6 @@
 /*
  Prepares and retains one WhisperKit model, then serializes every inference run.
- TranscriptionEngine accepts one narrow closure seam for deterministic tests.
+ TranscriptionEngine accepts narrow asset and inference seams for deterministic tests.
  Production loads the pinned local model at launch and reuses it until app exit.
  A canceled caller cannot return text; WAV teardown finishes before the next run.
  Actor reentrancy is controlled by an explicit FIFO gate around the whole run.
@@ -36,8 +36,10 @@ actor TranscriptionEngine {
     typealias Preparation = @Sendable (AssetLocations) async throws -> Void
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
     typealias Unload = @Sendable () async -> Void
+    typealias AssetLoader = @Sendable (URL) async throws -> AssetLocations
 
     private let resourceRoot: URL
+    private let assetLoader: AssetLoader
     private let injectedPreparation: Preparation?
     private let injectedInference: Inference?
     private let injectedUnload: Unload?
@@ -48,6 +50,7 @@ actor TranscriptionEngine {
 
     init(resourceRoot: URL) {
         self.resourceRoot = resourceRoot
+        assetLoader = AssetPreflight.check
         injectedPreparation = nil
         injectedInference = nil
         injectedUnload = nil
@@ -55,11 +58,13 @@ actor TranscriptionEngine {
 
     init(
         resourceRoot: URL,
+        assetLoader: @escaping AssetLoader = AssetPreflight.check,
         preparation: @escaping Preparation = { _ in },
         inference: @escaping Inference,
         unload: @escaping Unload = {}
     ) {
         self.resourceRoot = resourceRoot
+        self.assetLoader = assetLoader
         injectedPreparation = preparation
         injectedInference = inference
         injectedUnload = unload
@@ -75,7 +80,7 @@ actor TranscriptionEngine {
 
         do {
             try Task.checkCancellation()
-            let assets = try await AssetPreflight.check(resourceRoot: resourceRoot)
+            let assets = try await assetLoader(resourceRoot)
             try Task.checkCancellation()
 
             preparationStarted = true
@@ -103,7 +108,7 @@ actor TranscriptionEngine {
 
         do {
             try Task.checkCancellation()
-            let assets = try await AssetPreflight.check(resourceRoot: resourceRoot)
+            let assets = try await assetLoader(resourceRoot)
             try Task.checkCancellation()
             guard prepared else { throw TranscriptionEngineError.notPrepared }
 

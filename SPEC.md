@@ -90,24 +90,27 @@ There is no Xcode project and no Xcode GUI workflow. `swift build` compiles and
 `swift test` tests. One repository script performs the release build, assembles
 and personally signs `Steno.app`, atomically installs it at
 `/Users/brandonharvey/Applications/Steno.app`, and opens it. The script copies a
-fixed `Info.plist` and entitlements. It installs one authoritative model and
-tokenizer tree at
+fixed `Info.plist` and entitlements. A separate one-time developer script
+downloads and verifies one authoritative model and tokenizer tree at
 `~/Library/Containers/com.brandonharvey.steno/Data/Library/Application Support/Steno/Resources`,
-then leaves unchanged assets untouched across app replacement. The installed
-Apple command-line toolchain and macOS SDK remain required.
+and the installer requires but never modifies that tree. The installed Apple
+command-line toolchain, macOS SDK, and `uv` remain required.
 
 Use the WhisperKit product from the `argmax-oss-swift` Swift package, pinned to
 an exact release tag in `Package.swift`. Install the pinned Core ML model
 `openai_whisper-large-v3-v20240930_turbo_632MB`, which is a compressed Large v3
 Turbo variant, plus the complete `openai/whisper-large-v3` tokenizer snapshot.
-Commit large model weights through Git-LFS. The repository tree is the install
-source; the stable sandbox copy is the only runtime source. A clean checkout may
-use the network to resolve SwiftPM and Git-LFS objects; the assembled app must not.
+Track only their immutable repositories, revisions, paths, and tree hashes in
+`Resources/AssetManifest.json`. Do not commit model or tokenizer payloads.
+`scripts/prepare-model.sh` uses the pinned developer-only Hugging Face CLI to
+download exactly those assets and install them atomically. A clean checkout can
+build and run ordinary tests without speech assets. Only explicit preparation
+and SwiftPM resolution may use the network; the assembled app must not.
 
 Before WhisperKit initialization, verify that the installed model directories
-and local tokenizer files exist and are not Git-LFS pointers. Missing or malformed assets
-fail locally. Initialize WhisperKit with explicit local `modelFolder` and
-`tokenizerFolder` paths, `load: false`, and `download: false`.
+and local tokenizer files exist. Missing or malformed assets fail locally.
+Initialize WhisperKit with explicit local `modelFolder` and `tokenizerFolder`
+paths, `load: false`, and `download: false`.
 
 Request microphone access at runtime with `AVCaptureDevice.requestAccess(for:
 .audio)`. This requires both `NSMicrophoneUsageDescription` in `Info.plist` and
@@ -209,7 +212,7 @@ three five-minute meeting samples: quiet speech, two-person discussion, and
 moderate room noise. Keep corrected reference transcripts beside the private
 fixtures and keep both out of Git. Commit a public `BenchmarkManifest.json`
 containing stable sample IDs, durations, SHA-256 digests, and the normalization
-contract so every run identifies the same corpus. Keep model weights in Git-LFS.
+contract so every run identifies the same corpus. Keep model weights out of Git.
 
 Compute word error rate with one small, pinned script in the repository that
 normalizes case and punctuation the same way for hypothesis and reference. The

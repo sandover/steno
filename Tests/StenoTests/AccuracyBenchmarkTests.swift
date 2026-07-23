@@ -25,8 +25,8 @@ struct AccuracyBenchmarkTests {
         )
         #expect(!samples.isEmpty, "The approved benchmark manifest must contain samples")
 
-        let assets = try await AssetPreflight.check(resourceRoot: productionResources)
-        let engine = TranscriptionEngine(resourceRoot: productionResources)
+        let assets = try await AssetPreflight.check(resourceRoot: installedResources)
+        let engine = TranscriptionEngine(resourceRoot: installedResources)
         var speechScores: [WordErrorRateScore] = []
         var reports: [BenchmarkSampleReport] = []
 

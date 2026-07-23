@@ -2,7 +2,7 @@
  Proves model preparation uses pinned local assets and the engine's FIFO gate.
  Success retains one ready model; failure unloads partial model state.
  A transcription queued during preparation cannot overlap specialization.
- Tests inject only expensive model operations; production asset preflight remains real.
+ Tests inject asset loading and expensive model operations independently.
 */
 import Foundation
 import Testing
@@ -129,7 +129,8 @@ private actor EnginePreparationProbe {
 
 private func preparationEngine(probe: EnginePreparationProbe) -> TranscriptionEngine {
     TranscriptionEngine(
-        resourceRoot: productionResources,
+        resourceRoot: assetRepositoryRoot,
+        assetLoader: { _ in try testAssetLocations() },
         preparation: { assets in try await probe.prepare(assets) },
         inference: { audio, assets in await probe.transcribe(audio, assets: assets) },
         unload: { await probe.unload() }

@@ -1,5 +1,7 @@
 .scratch/
 .ergo/lock
+/Resources/Models/
+/Resources/Tokenizers/
 
 # Build output
 .build/

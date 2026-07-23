@@ -148,3 +148,8 @@
 {"type":"link","ts":"2026-07-23T15:36:51.127694Z","data":{"from_id":"XPL4A4","to_id":"QUKOTO","type":"depends"}}
 {"type":"claim","ts":"2026-07-23T15:36:54.934584Z","data":{"id":"IDCIXG","agent_id":"codex@steno","ts":"2026-07-23T15:36:54.934584Z"}}
 {"type":"state","ts":"2026-07-23T15:36:54.934584Z","data":{"id":"IDCIXG","state":"doing","ts":"2026-07-23T15:36:54.934584Z"}}
+{"type":"message","ts":"2026-07-23T15:48:39.786485Z","data":{"task_id":"IDCIXG","kind":"done","text":"Pinned acquisition, migrated the installed manifest without download, and verified idempotent preparation.","ts":"2026-07-23T15:48:39.786485Z"}}
+{"type":"unclaim","ts":"2026-07-23T15:48:39.786485Z","data":{"id":"IDCIXG","ts":"2026-07-23T15:48:39.786485Z"}}
+{"type":"state","ts":"2026-07-23T15:48:39.786485Z","data":{"id":"IDCIXG","state":"done","ts":"2026-07-23T15:48:39.786485Z"}}
+{"type":"claim","ts":"2026-07-23T15:48:39.872426Z","data":{"id":"QUKOTO","agent_id":"codex@steno","ts":"2026-07-23T15:48:39.872426Z"}}
+{"type":"state","ts":"2026-07-23T15:48:39.872426Z","data":{"id":"QUKOTO","state":"doing","ts":"2026-07-23T15:48:39.872426Z"}}

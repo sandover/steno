@@ -36,9 +36,10 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Done.
 - Install one persistent copy of the pinned compressed Large v3 Turbo Core ML model
   `openai_whisper-large-v3-v20240930_turbo_632MB` and
   matching `openai/whisper-large-v3` tokenizer in Steno's sandbox Application
-  Support directory. Do not bundle a duplicate inside the replaceable app. The app runs
-  inside App Sandbox. It must not have a network-client entitlement, download
-  models at runtime, or fall back to remote recognition.
+  Support directory. Track only their pinned manifest in Git; prepare the
+  persistent tree with `scripts/prepare-model.sh`. Do not commit or bundle a
+  duplicate. The app runs inside App Sandbox. It must not have a network-client
+  entitlement, download models at runtime, or fall back to remote recognition.
 - Ship as a menu-bar accessory (`LSUIElement`, no Dock icon). Prove the complete
   loop with a headless test against the session model, not XCUITest, which would
   force a second build path.

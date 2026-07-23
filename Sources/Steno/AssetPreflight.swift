@@ -64,7 +64,6 @@ struct AssetLocations: Equatable, Sendable {
 enum AssetPreflightError: LocalizedError, Equatable {
     case missing(String)
     case empty(String)
-    case unresolvedGitLFS(String)
     case malformed(String)
 
     var errorDescription: String? {
@@ -73,8 +72,6 @@ enum AssetPreflightError: LocalizedError, Equatable {
             "A required offline speech asset is missing: \(path)"
         case let .empty(path):
             "A required offline speech asset is empty: \(path)"
-        case let .unresolvedGitLFS(path):
-            "A speech asset is still a Git-LFS pointer: \(path)"
         case let .malformed(detail):
             "The installed speech assets are malformed: \(detail)"
         }
@@ -190,13 +187,6 @@ enum AssetPreflight {
         let values = try url.resourceValues(forKeys: [.fileSizeKey])
         guard let size = values.fileSize, size > 0 else {
             throw AssetPreflightError.empty(relativePath(url, root: root))
-        }
-        let handle = try FileHandle(forReadingFrom: url)
-        let prefix = try handle.read(upToCount: 128) ?? Data()
-        try handle.close()
-        if String(decoding: prefix, as: UTF8.self)
-            .hasPrefix("version https://git-lfs.github.com/spec/v1") {
-            throw AssetPreflightError.unresolvedGitLFS(relativePath(url, root: root))
         }
     }
 

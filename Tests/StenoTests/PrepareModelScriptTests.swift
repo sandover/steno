@@ -18,7 +18,7 @@ struct PrepareModelScriptTests {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
         process.arguments = [
-            repositoryRoot.appendingPathComponent("scripts/prepare-model.sh").path,
+            assetRepositoryRoot.appendingPathComponent("scripts/prepare-model.sh").path,
             "--check",
         ]
         try process.run()
@@ -28,12 +28,12 @@ struct PrepareModelScriptTests {
     }
 }
 
-private let repositoryRoot = URL(fileURLWithPath: #filePath)
+let assetRepositoryRoot = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent()
     .deletingLastPathComponent()
     .deletingLastPathComponent()
 
-private let installedResources = FileManager.default.homeDirectoryForCurrentUser
+let installedResources = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent("Library/Containers/com.brandonharvey.steno", isDirectory: true)
     .appendingPathComponent(
         "Data/Library/Application Support/Steno/Resources",
