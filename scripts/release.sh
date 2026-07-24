@@ -134,11 +134,7 @@ if [[ -n "$VERSION_OVERRIDE" ]]; then
 fi
 [[ -n "$VERSION" ]] || fail "Steno version is missing from Support/Info.plist."
 /bin/mkdir -p "$OUTPUT_DIR"
-ARCHIVE_NAME="Steno-$VERSION.zip"
-if [[ "$INCLUDE_ASSETS" -eq 1 ]]; then
-    ARCHIVE_NAME="Steno-$VERSION-offline.zip"
-fi
-ARCHIVE="$OUTPUT_DIR/$ARCHIVE_NAME"
+ARCHIVE="$OUTPUT_DIR/Steno-$VERSION.zip"
 [[ ! -e "$ARCHIVE" ]] || fail "Refusing to overwrite existing archive: $ARCHIVE"
 if [[ "$INCLUDE_ASSETS" -eq 1 ]]; then
     "$ROOT_DIR/scripts/prepare-model.sh" --check \
