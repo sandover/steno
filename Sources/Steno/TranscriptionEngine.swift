@@ -36,9 +36,11 @@ actor TranscriptionEngine {
     typealias Preparation = @Sendable (AssetLocations) async throws -> Void
     typealias Inference = @Sendable (URL, AssetLocations) async throws -> String
     typealias Unload = @Sendable () async -> Void
+    typealias AssetSeeder = @Sendable (URL) async throws -> Void
     typealias AssetLoader = @Sendable (URL) async throws -> AssetLocations
 
     private let resourceRoot: URL
+    private let assetSeeder: AssetSeeder
     private let assetLoader: AssetLoader
     private let injectedPreparation: Preparation?
     private let injectedInference: Inference?
@@ -50,6 +52,9 @@ actor TranscriptionEngine {
 
     init(resourceRoot: URL) {
         self.resourceRoot = resourceRoot
+        assetSeeder = { root in
+            try await BundledAssets.seedIfNeeded(destination: root)
+        }
         assetLoader = AssetPreflight.check
         injectedPreparation = nil
         injectedInference = nil
@@ -58,12 +63,14 @@ actor TranscriptionEngine {
 
     init(
         resourceRoot: URL,
+        assetSeeder: @escaping AssetSeeder = { _ in },
         assetLoader: @escaping AssetLoader = AssetPreflight.check,
         preparation: @escaping Preparation = { _ in },
         inference: @escaping Inference,
         unload: @escaping Unload = {}
     ) {
         self.resourceRoot = resourceRoot
+        self.assetSeeder = assetSeeder
         self.assetLoader = assetLoader
         injectedPreparation = preparation
         injectedInference = inference
@@ -79,6 +86,8 @@ actor TranscriptionEngine {
         var preparationStarted = false
 
         do {
+            try Task.checkCancellation()
+            try await assetSeeder(resourceRoot)
             try Task.checkCancellation()
             let assets = try await assetLoader(resourceRoot)
             try Task.checkCancellation()

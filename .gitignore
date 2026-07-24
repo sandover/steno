@@ -6,6 +6,7 @@
 # Build output
 .build/
 Steno.app/
+/dist/
 
 # Private, consented accuracy-benchmark fixtures (audio + reference transcripts)
 /Fixtures/

@@ -20,6 +20,24 @@ struct TranscriptionEnginePreparationTests {
         #expect(await probe.modelRevision == "97a5bf9bbc74c7d9c12c755d04dea59e672e3808")
     }
 
+    @Test func preparationSeedsBundledAssetsBeforeLoading() async throws {
+        let probe = EnginePreparationProbe()
+        let engine = TranscriptionEngine(
+            resourceRoot: assetRepositoryRoot,
+            assetSeeder: { _ in await probe.seed() },
+            assetLoader: { _ in
+                await probe.load()
+                return try testAssetLocations()
+            },
+            preparation: { assets in try await probe.prepare(assets) },
+            inference: { audio, assets in await probe.transcribe(audio, assets: assets) }
+        )
+
+        try await engine.prepare()
+
+        #expect(await probe.events == ["seed", "load", "prepare-start", "prepare-finish"])
+    }
+
     @Test func failedPreparationStillUnloads() async {
         let probe = EnginePreparationProbe(preparationFails: true)
         let engine = preparationEngine(probe: probe)
@@ -90,6 +108,14 @@ private actor EnginePreparationProbe {
         }
         finish("prepare")
         if preparationFails { throw EnginePreparationError.failed }
+    }
+
+    func seed() {
+        events.append("seed")
+    }
+
+    func load() {
+        events.append("load")
     }
 
     func transcribe(_ audio: URL, assets: AssetLocations) -> String {

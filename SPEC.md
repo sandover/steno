@@ -87,11 +87,19 @@ WhisperKit's macOS 14 minimum, but V1 makes no compatibility promise beyond the
 current machine.
 
 There is no Xcode project and no Xcode GUI workflow. `swift build` compiles and
-`swift test` tests. One repository script performs the release build, assembles
-and personally signs `Steno.app`, atomically installs it at
-`/Users/brandonharvey/Applications/Steno.app`, and opens it. The script copies a
-fixed `Info.plist` and entitlements. A separate one-time developer script
-downloads and verifies one authoritative model and tokenizer tree at
+`swift test` tests. `scripts/install.sh` performs the local release build,
+assembles and Apple Development-signs `Steno.app`, atomically installs it at
+`/Users/brandonharvey/Applications/Steno.app`, and opens it. It copies a fixed
+`Info.plist` and entitlements. `scripts/release.sh` separately assembles a fresh
+archive, Developer ID-signs it with hardened runtime and a secure timestamp,
+and can submit it to Apple for notarization using a pre-existing Keychain
+profile. The release script never replaces the locally installed app. Its
+`--include-assets` mode copies the already verified speech assets into signed
+bundle resources for a colleague's first download. On first launch the app
+validates and promotes that copy into its persistent sandbox root; later app
+updates reuse the persistent copy. `--version` sets both staged bundle-version
+fields and is required for each external release. A one-time developer script downloads and
+verifies one authoritative model and tokenizer tree at
 `~/Library/Containers/com.brandonharvey.steno/Data/Library/Application Support/Steno/Resources`,
 and the installer requires but never modifies that tree. The installed Apple
 command-line toolchain, macOS SDK, and `uv` remain required.

@@ -31,15 +31,22 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Done.
   or general machinery merely because a dependency makes them possible.
 - Build and test from the command line with Swift Package Manager. Keep no
   `.xcodeproj`, `.xcworkspace`, Xcode-only build step, or second build path.
-- Use one small script to assemble and personally sign the local `.app` bundle
-  from `swift build`; do not introduce a project generator or packaging framework.
+- Keep the local installer and the Developer ID release flow separate: the
+  installer may replace Brandon's local app, while `scripts/release.sh` only
+  creates an archive from a fresh staging bundle. `--include-assets` may bundle
+  the verified offline assets only for a colleague release; first launch seeds
+  them into the sandbox and later app updates reuse that copy. Do not introduce
+  a project generator or packaging framework.
 - Install one persistent copy of the pinned compressed Large v3 Turbo Core ML model
   `openai_whisper-large-v3-v20240930_turbo_632MB` and
   matching `openai/whisper-large-v3` tokenizer in Steno's sandbox Application
   Support directory. Track only their pinned manifest in Git; prepare the
-  persistent tree with `scripts/prepare-model.sh`. Do not commit or bundle a
-  duplicate. The app runs inside App Sandbox. It must not have a network-client
-  entitlement, download models at runtime, or fall back to remote recognition.
+  persistent tree with `scripts/prepare-model.sh`. Do not commit model payloads.
+  A Developer ID colleague release may carry one signed bootstrap copy under
+  `Contents/Resources/BundledAssets`, but runtime must promote it into the
+  persistent tree and never load from the bundle. The app runs inside App
+  Sandbox. It must not have a network-client entitlement, download models at
+  runtime, or fall back to remote recognition.
 - Ship as a menu-bar accessory (`LSUIElement`, no Dock icon). Prove the complete
   loop with a headless test against the session model, not XCUITest, which would
   force a second build path.
@@ -56,8 +63,10 @@ Protect this narrow product. The core loop is Record, Stop, Copy, Done.
 - Stop for approval when a choice would widen product scope, add persistence or
   app networking, create a parallel implementation, or create a second source
   of truth.
-- Optimize for Brandon's current Mac only. Do not add distribution,
-  notarization, a distributable installer/package, or multi-user compatibility.
+- The Developer ID release flow may use `--include-assets` for an internal,
+  drag-and-drop colleague release. Keep the small app-only archive for signing
+  and notarization checks; use a new `--version` for every external release
+  and do not add a `.pkg` installer.
 
 ## Communication
 

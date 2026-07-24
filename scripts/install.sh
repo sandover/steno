@@ -5,7 +5,7 @@
 # Installation requires that persistent tree but never copies or changes it.
 # The app bundle alone is staged and replaced atomically.
 # An installed process receives TERM and must exit before replacement.
-# A fixed personal Apple Development identity keeps the sandbox identity stable.
+# A fixed Fourier Apple Development identity keeps the sandbox identity stable.
 # Signing grants only App Sandbox and microphone input; network access is absent.
 
 set -euo pipefail
@@ -14,9 +14,9 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 INSTALL_PARENT="/Users/brandonharvey/Applications"
 INSTALL_APP="$INSTALL_PARENT/Steno.app"
 INSTALL_EXECUTABLE="$INSTALL_APP/Contents/MacOS/Steno"
-SIGNING_IDENTITY="D48285CCB96EB4280D7921EF44E210AE3FCA316B"
-SIGNING_AUTHORITY="Apple Development: sandover@gmail.com (AA7X6693E3)"
-SIGNING_TEAM="GS88W79LPB"
+SIGNING_IDENTITY="5D698CE0E006D9DBC6E88F1E369CC74BBFA81CDE"
+SIGNING_AUTHORITY="Apple Development: Brandon Harvey (4V9MQN23D3)"
+SIGNING_TEAM="2N634QL2T4"
 STAGING_DIR=""
 AVAILABLE_IDENTITIES=""
 
@@ -46,9 +46,9 @@ verify_bundle() {
     /usr/bin/codesign --verify --deep --strict "$app"
     signature_details="$(/usr/bin/codesign --display --verbose=4 "$app" 2>&1)"
     /usr/bin/grep -Fq "Authority=$SIGNING_AUTHORITY" <<< "$signature_details" \
-        || { echo "Personal Apple Development authority is missing." >&2; exit 1; }
+        || { echo "Fourier Apple Development authority is missing." >&2; exit 1; }
     /usr/bin/grep -Fq "TeamIdentifier=$SIGNING_TEAM" <<< "$signature_details" \
-        || { echo "Personal Apple Development signature is missing." >&2; exit 1; }
+        || { echo "Fourier Apple Development signature is missing." >&2; exit 1; }
     if /usr/bin/grep -Fq "Signature=adhoc" <<< "$signature_details"; then
         echo "Ad-hoc signatures are not accepted." >&2
         exit 1
@@ -95,7 +95,7 @@ cd "$ROOT_DIR"
     }
 AVAILABLE_IDENTITIES="$(/usr/bin/security find-identity -v -p codesigning)"
 /usr/bin/grep -Fq "$SIGNING_IDENTITY" <<< "$AVAILABLE_IDENTITIES" \
-    || { echo "Personal Apple Development signing identity is unavailable." >&2; exit 1; }
+    || { echo "Fourier Apple Development signing identity is unavailable." >&2; exit 1; }
 /usr/bin/swift build -c release
 BIN_DIR="$(/usr/bin/swift build -c release --show-bin-path)"
 [[ -x "$BIN_DIR/Steno" ]] || { echo "Release executable is missing." >&2; exit 1; }
